@@ -14,7 +14,7 @@ def publisher(host, port):
         print(f"Failed to connect to broker: {e}")
         return
 
-    fetcher = TrafficDataFetcher(api_url="http://api.traffic.com", api_key="your_api_key")
+    fetcher = TrafficDataFetcher(api_url="http://api.511.org/traffic/", api_key="9d297b1d-eb23-4a0c-bd71-ec8bd076ab10")
 
     try:
         raw_data = fetcher.fetch_data("events")  # Get JSON data from the TrafficDataFetcher class
