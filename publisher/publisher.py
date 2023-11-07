@@ -1,9 +1,9 @@
-import socket
 import json
+import socket
 import time
 from dataclasses import asdict
-from event.traffic_data_fetcher import TrafficDataFetcher  # make sure to import your fetcher
-from event.traffic_data_fetcher import Event
+from traffic_data_fetcher import TrafficDataFetcher
+from traffic_data_fetcher import Event
 
 def publisher(host, port):
     try:
