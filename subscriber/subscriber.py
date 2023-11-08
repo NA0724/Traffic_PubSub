@@ -2,37 +2,62 @@ import socket
 import json
 import sys
 
-def subscriber(subscriber_name):
+def subscriber(subscriber_name, topics):
     subscriber_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     subscriber_socket.connect(('localhost', 8888))  # Connect to the broker
 
-    topic = "traffic_notifications"  # Specify the topic
-    subscriber_socket.send(f"SUBSCRIBE {topic}".encode())
+    # Subscribe to each topic
+    for topic in topics:
+        subscriber_socket.send(f"SUBSCRIBE*{topic}".encode())
 
-    while True:
-        message = subscriber_socket.recv(1024).decode()
+    try:
+        while True:
+            message = subscriber_socket.recv(1024).decode()
 
-        # Split the received message into parts
-        parts = message.split(" ")
-        if len(parts) == 3 and parts[0] == "PUBLISH":
-            published_topic, json_data = parts[1], parts[2]
-
-            if published_topic == topic:
+            # Note:
+            # Subscriber code should not expect to receive the command "PUBLISH" or the topic as part of the message. 
+            # It should only expect to receive the data, which is a JSON string.
+            if message:
                 # Parse the JSON data
-                event_data = json.loads(json_data)
-
-                # Process the event data (you can modify this part as needed)
-                print(f"Subscriber {subscriber_name} received traffic event:")
-                print(f"Event ID: {event_data['event_id']}")
-                print(f"Area: {event_data['area']}")
-                print(f"Event Type: {event_data['event_type']}")
-                print(f"Headline: {event_data['headline']}")
-                print(f"Updated: {event_data['updated']}")
-                print()
+                event_data = json.loads(message)
+                
+                # Check if the event's area is one of the interested topics
+                if event_data["area"] in topics:
+                    # Process the event data (you can modify this part as needed)
+                    print(f"Subscriber {subscriber_name} received traffic event:")
+                    print(f"Event ID: {event_data['event_id']}")
+                    print(f"Area: {event_data['area']}")
+                    print(f"Event Type: {event_data['event_type']}")
+                    print(f"Headline: {event_data['headline']}")
+                    print(f"Updated: {event_data['updated']}")
+                    print()
+    except KeyboardInterrupt:
+        print(f"Subscriber {subscriber_name} is shutting down.")
+    finally:
+        subscriber_socket.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python subscriber.py <subscriber_name>")
+    if len(sys.argv) < 3:
+        print("Usage: python subscriber.py <subscriber_name> <topic1> <topic2> ...")
     else:
         subscriber_name = sys.argv[1]
-        subscriber(subscriber_name)
+        interested_topics = sys.argv[2:]
+        subscriber(subscriber_name, interested_topics)
+
+    
+    """Topic(area) List:
+        Alameda
+        Contra Costa
+        Marin
+        San Francisco
+        San Mateo
+        San Benito
+        Santa Clara
+        Napa
+        Solano
+        Sonoma
+        Merced
+        Santa Cruz
+        San Joaquin
+        Stanislaus
+    """
