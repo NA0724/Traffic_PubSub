@@ -30,7 +30,7 @@ def publisher(host, port):
                     # Convert the event object to a JSON-serializable dictionary
                     event_dict = asdict(event)
                     # Include the topic in the message
-                    message = f"PUBLISH {topic} {json.dumps(event_dict)}"
+                    message = f"PUBLISH*{topic}*{json.dumps(event_dict)}"
                     print("Sending data:", message)
                     publisher_socket.sendall(message.encode('utf-8'))
                     print("Data sent\n")
