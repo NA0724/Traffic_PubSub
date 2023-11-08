@@ -13,11 +13,12 @@ class TrafficBroker:
         while True:
             message = client_socket.recv(1024).decode()
             if not message:
+                print("No message")
                 break
-
-            parts = message.split(" ")
+            parts = message.split("*")
             if len(parts) == 3:
                 command, topic, data = parts
+                print(command, topic, data)
                 if command == "SUBSCRIBE":
                     if topic not in self.topic_subscribers:
                         self.topic_subscribers[topic] = []
