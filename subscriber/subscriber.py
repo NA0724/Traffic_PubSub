@@ -1,6 +1,7 @@
 import socket
 import json
 import sys
+import time
 
 def subscriber(subscriber_name, topics):
     subscriber_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -9,6 +10,7 @@ def subscriber(subscriber_name, topics):
     # Subscribe to each topic
     for topic in topics:
         subscriber_socket.send(f"SUBSCRIBE*{topic}".encode())
+        time.sleep(0.1)
 
     try:
         while True:
@@ -26,7 +28,7 @@ def subscriber(subscriber_name, topics):
                     # Process the event data (you can modify this part as needed)
                     print(f"Subscriber {subscriber_name} received traffic event:")
                     print(f"Event ID: {event_data['event_id']}")
-                    print(f"Area: {event_data['area']}")
+                    print(f"Area: \033[91m{event_data['area']}\033[0m")
                     print(f"Event Type: {event_data['event_type']}")
                     print(f"Headline: {event_data['headline']}")
                     print(f"Updated: {event_data['updated']}")
@@ -37,7 +39,7 @@ def subscriber(subscriber_name, topics):
         subscriber_socket.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 2:
         print("Usage: python subscriber.py <subscriber_name> <topic1> <topic2> ...")
     else:
         subscriber_name = sys.argv[1]

@@ -4,6 +4,7 @@ import threading
 class TrafficBroker:
     def __init__(self):
         self.topic_subscribers = {}
+        self.lock = threading.Lock()
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind(('0.0.0.0', 8888))
         self.server.listen(5)
@@ -13,21 +14,32 @@ class TrafficBroker:
         while True:
             message = client_socket.recv(1024).decode()
             if not message:
-                print("No message")
+                print(f"Client {client_socket} disconnected.")
                 break
+            # Handle the message
+            print("Got message: ", message)
             parts = message.split("*")
-            if len(parts) == 3:
-                command, topic, data = parts
-                print(command, topic, data)
-                if command == "SUBSCRIBE":
+            command = parts[0]
+            if command == "SUBSCRIBE":
+                with self.lock:
+                    topic = parts[1]
                     if topic not in self.topic_subscribers:
                         self.topic_subscribers[topic] = []
                     self.topic_subscribers[topic].append(client_socket)
-                elif command == "PUBLISH":
+            elif command == "PUBLISH":
+                with self.lock:
+                    topic = parts[1]
+                    data = parts[2]
                     if topic in self.topic_subscribers:
+                        disconnected_subscribers = []
                         for subscriber in self.topic_subscribers[topic]:
-                            subscriber.send(data.encode())
-
+                            try:
+                                subscriber.send(data.encode())
+                            except socket.error as e:
+                                disconnected_subscribers.append(subscriber)
+                        for subscriber in disconnected_subscribers:
+                            self.topic_subscribers[topic].remove(subscriber)
+                        
             else:
                 client_socket.send("Invalid command".encode())
 
@@ -36,6 +48,7 @@ class TrafficBroker:
     def run(self):
         while True:
             client_socket, addr = self.server.accept()
+            print(f"Accepted connection from {addr}")
             client_handler = threading.Thread(target=self.handle_client, args=(client_socket,))
             client_handler.start()
 
