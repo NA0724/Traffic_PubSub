@@ -39,13 +39,20 @@ def subscriber(subscriber_name, topics):
         subscriber_socket.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
+    """if len(sys.argv) < 2:
         print("Usage: python subscriber.py <subscriber_name> <topic1> <topic2> ...")
     else:
         subscriber_name = sys.argv[1]
         interested_topics = sys.argv[2:]
         subscriber(subscriber_name, interested_topics)
-
+    """
+    if len(sys.argv) < 5:
+        print("Usage: python subscriber.py <subscriber_name> <topic1> <topic2> <broker_address>")
+    else:
+        subscriber_name = sys.argv[1]
+        interested_topics = sys.argv[2:4]
+        broker_address = (sys.argv[4], 8888)
+        subscriber(subscriber_name, interested_topics, broker_address)
     
     """Topic(area) List:
         Alameda

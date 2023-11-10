@@ -5,11 +5,11 @@ from dataclasses import asdict
 from traffic_data_fetcher import TrafficDataFetcher
 from traffic_data_fetcher import Event
 
-def publisher(host, port):
+def publisher(host, por, broker_address):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as publisher_socket:
         try:
-            publisher_socket.connect((host, port))  # Connect to the broker
-            print(f"Connected to broker at {host}:{port}")
+            publisher_socket.connect(broker_address)  # Connect to the broker
+            print(f"Connected to broker at {broker_address}")
         except ConnectionError as e:
             print(f"Failed to connect to broker: {e}")
             return
@@ -47,4 +47,6 @@ def publisher(host, port):
 if __name__ == "__main__":
     broker_host = 'localhost'
     broker_port = 8888
-    publisher(broker_host, broker_port)
+    #publisher(broker_host, broker_port)
+    broker_address = (broker_host, broker_port)
+    publisher(broker_host, broker_port, broker_address)
