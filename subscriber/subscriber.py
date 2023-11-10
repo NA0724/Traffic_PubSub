@@ -3,9 +3,9 @@ import json
 import sys
 import time
 
-def subscriber(subscriber_name, topics):
+def subscriber(subscriber_name, topics, broker_address):
     subscriber_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    subscriber_socket.connect(('localhost', 8888))  # Connect to the broker
+    subscriber_socket.connect(broker_address)  # Connect to the broker
 
     # Subscribe to each topic
     for topic in topics:
