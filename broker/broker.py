@@ -92,11 +92,19 @@ class TrafficBroker:
             client_handler = threading.Thread(target=self.handle_client, args=(client_socket,))
             client_handler.start()
 
-if __name__ == "__main__":
-    # Example: broker1
-    broker1 = TrafficBroker('localhost', 8888, cluster_address=[('localhost', 8889)])
-    broker1.run()
+def start_broker(host, port, cluster_address):
+    broker = TrafficBroker(host, port, cluster_address)
+    broker.run()
 
-    # Example: broker2 (in the same script or run separately)
-    broker2 = TrafficBroker('localhost', 8889, cluster_address=[('localhost', 8888)])
-    broker2.run()
+
+if __name__ == "__main__":
+    broker_addresses = [('localhost', 8888), ('localhost', 8889)]
+
+    processes = []
+    for host, port in broker_addresses:
+        p = multiprocessing.Process(target=start_broker, args=(host, port, [addr for addr in broker_addresses if addr != (host, port)]))
+        p.start()
+        processes.append(p)
+
+    for p in processes:
+        p.join()
