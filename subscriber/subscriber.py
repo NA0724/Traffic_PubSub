@@ -9,7 +9,7 @@ def subscriber(subscriber_name, topics, broker_address):
 
     # Subscribe to each topic
     for topic in topics:
-        subscriber_socket.send(f"SUBSCRIBE*{topic}".encode())
+        subscriber_socket.send(f"SUBSCRIBE*{topic}*".encode())
         time.sleep(0.1)
 
     try:
@@ -46,12 +46,12 @@ if __name__ == "__main__":
         interested_topics = sys.argv[2:]
         subscriber(subscriber_name, interested_topics)
     """
-    if len(sys.argv) < 5:
-        print("Usage: python subscriber.py <subscriber_name> <topic1> <topic2> <broker_address>")
+    if len(sys.argv) < 3:
+        print("Usage: python subscriber.py <subscriber_name> <broker_address> <topic1> <topic2> ... ")
     else:
         subscriber_name = sys.argv[1]
-        interested_topics = sys.argv[2:4]
-        broker_address = (sys.argv[4], 8888)
+        broker_address = (sys.argv[2], 8888)
+        interested_topics = sys.argv[3:]
         subscriber(subscriber_name, interested_topics, broker_address)
     
     """Topic(area) List:
