@@ -9,12 +9,14 @@ class TrafficBroker:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind((host, port))
         self.server.listen(5)
+        self.cluster_sockets = {} # Dictionary to store connections
         self.cluster_manager = None
         self.cluster_address = cluster_address
         if self.cluster_address:
             self.setup_cluster()
 
-        print(f"Broker listening on {host}:{port}")
+
+        print(f"Broker listening on {host}:{port}", flush=True)
         
     
     def setup_cluster(self):
@@ -30,24 +32,18 @@ class TrafficBroker:
         try:
             cluster_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             cluster_socket.connect(addr)
+            self.cluster_sockets[addr] = cluster_socket
             print(f"Connected to cluster node at {addr}")
             
             # Send information about the local broker (e.g., address)
             local_info = f"LOCAL_INFO*{self.server.getsockname()}"
-            cluster_socket.send(local_info.encode())
-
-            # Receive information about the remote broker
-            remote_info = cluster_socket.recv(1024).decode()
-            print(f"Received remote info: {remote_info}")
-
-            # Parse the received information and update local state accordingly
+            print(f"Sending local info: {local_info}")  # Add this line for debugging
+            self.cluster_sockets[addr].send(local_info.encode())
+            print("sent")
 
         except Exception as e:
             print(f"Error connecting to cluster node at {addr}: {e}")
 
-        finally:
-            cluster_socket.close()
-        #pass
 
 
     def handle_client(self, client_socket):
@@ -79,6 +75,12 @@ class TrafficBroker:
                                 disconnected_subscribers.append(subscriber)
                         for subscriber in disconnected_subscribers:
                             self.topic_subscribers[topic].remove(subscriber)
+            elif command == "LOCAL_INFO":
+                with self.lock:
+                    # Receive information about the remote broker
+                    print(f"Received remote info: {message}")
+
+            # Parse the received information and update local state accordingly
                         
             else:
                 client_socket.send("Invalid command".encode())
