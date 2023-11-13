@@ -9,7 +9,7 @@ def subscriber(subscriber_name, topics, broker_address):
 
     # Subscribe to each topic
     for topic in topics:
-        subscriber_socket.send(f"SUBSCRIBE*{topic}*".encode())
+        subscriber_socket.send(f"SUBSCRIBE*{topic}*\n".encode())
         time.sleep(0.1)
 
     try:
