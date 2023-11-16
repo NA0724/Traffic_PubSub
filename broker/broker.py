@@ -1,3 +1,4 @@
+import json
 import socket
 import threading
 import multiprocessing
@@ -20,7 +21,7 @@ class TrafficBroker:
         self.current_leader = None
         self.election_in_progress = False
         self.election_timeout = 10
-        
+        self.cluster_status = {} #dictionary to store details of every broker in the cluster
         self.cluster_address = cluster_address # example: [('localhost', 8889), ('localhost', 8890)].
         if self.cluster_address:
             self.setup_cluster()
@@ -35,7 +36,9 @@ class TrafficBroker:
         # Connect to other brokers in the cluster
         for addr in self.cluster_address:
             self.connect_to_cluster_node(addr)
+        # start election after cluster is formed
         self.start_election_thread()
+        
         # Start a thread for gossip protocol
         gossip_thread = threading.Thread(target=self.start_gossip_protocol)
         gossip_thread.start()
@@ -133,8 +136,16 @@ class TrafficBroker:
         elif command == "GOSSIP":
             with self.lock:
                 # Process the incoming gossip message
-                status, topics_and_subscriptions = parts[1], parts[2]
-                self.update_local_state(status, topics_and_subscriptions)
+                details_str = parts[1] 
+                details = json.loads(details_str)
+                self.cluster_status = {
+                    ""
+                }
+                # Extract information from the details dictionary
+                #port = details.get("port")
+                #current_broker_status = details.get("status")
+                #topic_subscribers = details.get("topic_subscribers")
+                #self.store_cluster_details(details)
 
 
     def run(self):
@@ -233,18 +244,18 @@ class TrafficBroker:
         while True:
             # Choose a random broker from the cluster to gossip with
             random_broker = random.choice(list(self.cluster_sockets.keys()))
-            print("Starting gossip, broker chosen: {}".format(random_broker))
+            print(f"Starting gossip, {self.port} will gossip with: {random_broker}")
             # Send and receive gossip messages with the chosen broker
             self.send_gossip_message(random_broker)
             self.receive_gossip_message(random_broker)
 
             # Introduce a delay before the next round of gossip
-            time.sleep(2)  # Adjust the interval as needed
+            time.sleep(5)  # Adjust the interval as needed
     
     def send_gossip_message(self, addr):
         try:
             # Create a gossip message with relevant information
-            gossip_message = f"GOSSIP*{self.get_broker_status()}*{self.get_topics_and_subscriptions()}\n"
+            gossip_message = f"GOSSIP*{self.get_current_broker_details()}\n"
             self.cluster_sockets[addr].send(gossip_message.encode())  
         except Exception as e:
             print(f"Error sending gossip message to {addr}: {e}")
@@ -262,43 +273,16 @@ class TrafficBroker:
         except Exception as e:
             print(f"Error receiving gossip message from {addr}: {e}")
 
-    def update_local_state(self, status, topics_and_subscriptions):
-        # Process and update local state based on received gossip data
-        print(f"Received gossip status: {status}")
-        print(f"Received gossip topics and subscriptions: {topics_and_subscriptions}")
-        # Update broker status
-        if status == "UP":
-            self.broker_status = "UP"
-        elif status == "FAILED":
-            self.broker_status = "FAILED"
-
-        # Update topics and subscriptions
-        try:
-            topics_subscriptions_dict = eval(topics_and_subscriptions)
-            with self.lock:
-                for topic, subscribers in topics_subscriptions_dict.items():
-                    if topic not in self.topic_subscribers:
-                        self.topic_subscribers[topic] = []
-                    self.topic_subscribers[topic] = subscribers
-        except Exception as e:
-            print(f"Error updating topics and subscriptions: {e}")
-
     
-    def get_broker_status(self):
-        try:
-            # Attempt to establish a connection to the server socket
-            test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            test_socket.settimeout(1)  # Set a timeout for the connection attempt
-            test_socket.connect((self.host, self.port))
-            test_socket.close()
-            return "UP"
-        except (socket.error, ConnectionRefusedError):
-            return "FAILED"
-
-    def get_topics_and_subscriptions(self):
-        with self.lock:
-            # Return information about topics and subscriptions
-            return str(self.topic_subscribers)
+ 
+    def get_current_broker_details(self):
+        details = {
+            "port": self.port,
+            "status": "UP",
+            "topic_subscribers": self.topic_subscribers
+        }
+        return details
+        
 
 
 def parse_args():
