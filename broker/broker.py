@@ -35,6 +35,9 @@ class TrafficBroker:
         # Connect to other brokers in the cluster
         for addr in self.cluster_address:
             self.connect_to_cluster_node(addr)
+        # Start a thread for gossip protocol
+        gossip_thread = threading.Thread(target=self.start_gossip_protocol)
+        gossip_thread.start()
 
     def connect_to_cluster_node(self, addr, retry_count = 3, retry_delay=2):
         # Implement a mechanism to connect to other brokers in the cluster
@@ -43,15 +46,8 @@ class TrafficBroker:
                 cluster_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 cluster_socket.connect(addr)
                 self.cluster_sockets[addr] = cluster_socket
-                print(f"Connected to cluster node at {addr}")
-                
-                # # Send information about the local broker (e.g., address)
-                # local_info = f"LOCAL_INFO*{self.server.getsockname()}"
-                # print(f"Sending local info: {local_info}")  # Add this line for debugging
-                # self.cluster_sockets[addr].send(local_info.encode())
-                # time.sleep(0.1)
+                print(f"\033[32mConnected to cluster node at {addr}\033[0m")
                 return
-            
             except Exception as e:
                 if attempt < retry_count - 1:
                     print(f"Retry {attempt + 1}/{retry_count} connecting to {addr}")
@@ -64,16 +60,15 @@ class TrafficBroker:
         while True:
             data = client_socket.recv(1024).decode()
             if not data:
-                print(f"Client {client_socket} disconnected.")
+                print(f"\033[31mClient {client_socket} disconnected.\033[0m")
                 break
-            
             # Handle the messages
             messages = data.split('\n')
             for message in messages:
                 if message:
                     self.process_message(message, client_socket)
-
         client_socket.close()
+
 
     def process_message(self, message, client_socket):
         print("Got message: ", message)
@@ -121,7 +116,7 @@ class TrafficBroker:
             self.current_leader = parts[1]
             self.is_leader = (self.current_leader == (self.host, self.port))
             self.election_in_progress = False
-            print(f"\033[91mElection ended. Current leader is {self.current_leader}\033[0m")
+            print(f"\033[34mElection ended. Current leader is {self.current_leader}\033[0m")
         elif command == "ELECTION_ACK":
             sender_addr = parts[1]
             # Acknowledgement received from a higher broker
@@ -130,12 +125,17 @@ class TrafficBroker:
             # Reset or update relevant election flags
             self.election_in_progress = False
             self.is_leader = False
+        elif command == "GOSSIP":
+            with self.lock:
+                # Process the incoming gossip message
+                status, topics_and_subscriptions = parts[1], parts[2]
+                self.update_local_state(status, topics_and_subscriptions)
 
 
     def run(self):
         while True:
             client_socket, addr = self.server.accept()
-            print(f"Accepted connection from {addr}")
+            print(f"\033[32mAccepted connection from {addr}\033[0m")
             client_handler = threading.Thread(target=self.handle_client, args=(client_socket,))
             client_handler.start()
 
@@ -146,7 +146,7 @@ class TrafficBroker:
             if self.election_in_progress or self.is_leader:
                 print(f"Election already in progress on {self.port}")
                 return
-            
+            print("Starting election.......")
             print(f"{self.host}:{self.port} starts an election")
             self.election_in_progress = True
             higher_brokers = [addr for addr in self.cluster_address if addr > (self.host, self.port)]
@@ -182,7 +182,7 @@ class TrafficBroker:
                     self.send_victory_message(addr)
         self.is_leader = True
         self.current_leader = (self.host, self.port)
-        print(f"\033[91mElection ended. Current leader: {self.current_leader}\033[0m")
+        print(f"\033[34mElection ended. Current leader: {self.current_leader}\033[0m")
     
     def send_election_message(self, addr):
         # Send an election message to the broker at addr
@@ -214,7 +214,80 @@ class TrafficBroker:
     def start_election_thread(self):
         election_thread = threading.Thread(target=self.start_election)
         election_thread.start()
+        
+    #gossip protocol
+    def start_gossip_protocol(self):
+        while True:
+            # Choose a random broker from the cluster to gossip with
+            random_broker = random.choice(list(self.cluster_sockets.keys()))
+            print("Starting gossip, broker chosen: {}".format(random_broker))
+            # Send and receive gossip messages with the chosen broker
+            self.send_gossip_message(random_broker)
+            self.receive_gossip_message(random_broker)
+
+            # Introduce a delay before the next round of gossip
+            time.sleep(2)  # Adjust the interval as needed
     
+    def send_gossip_message(self, addr):
+        try:
+            # Create a gossip message with relevant information
+            gossip_message = f"GOSSIP*{self.get_broker_status()}*{self.get_topics_and_subscriptions()}\n"
+            self.cluster_sockets[addr].send(gossip_message.encode())  
+        except Exception as e:
+            print(f"Error sending gossip message to {addr}: {e}")
+
+    def receive_gossip_message(self, addr):
+        try:
+            # Receive and process gossip message
+            data = self.cluster_sockets[addr].recv(1024).decode()
+            parts = data.split("*")
+            command = parts[0]
+
+            if command == "GOSSIP":
+                # Process the gossip message and update local state if needed
+                self.update_local_state(parts[1], parts[2])  # Modify this according to your needs
+        except Exception as e:
+            print(f"Error receiving gossip message from {addr}: {e}")
+
+    def update_local_state(self, status, topics_and_subscriptions):
+        # Process and update local state based on received gossip data
+        print(f"Received gossip status: {status}")
+        print(f"Received gossip topics and subscriptions: {topics_and_subscriptions}")
+        # Update broker status
+        if status == "UP":
+            self.broker_status = "UP"
+        elif status == "FAILED":
+            self.broker_status = "FAILED"
+
+        # Update topics and subscriptions
+        try:
+            topics_subscriptions_dict = eval(topics_and_subscriptions)
+            with self.lock:
+                for topic, subscribers in topics_subscriptions_dict.items():
+                    if topic not in self.topic_subscribers:
+                        self.topic_subscribers[topic] = []
+                    self.topic_subscribers[topic] = subscribers
+        except Exception as e:
+            print(f"Error updating topics and subscriptions: {e}")
+
+    
+    def get_broker_status(self):
+        try:
+            # Attempt to establish a connection to the server socket
+            test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            test_socket.settimeout(1)  # Set a timeout for the connection attempt
+            test_socket.connect((self.host, self.port))
+            test_socket.close()
+            return "UP"
+        except (socket.error, ConnectionRefusedError):
+            return "FAILED"
+
+    def get_topics_and_subscriptions(self):
+        with self.lock:
+            # Return information about topics and subscriptions
+            return str(self.topic_subscribers)
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Traffic Broker')
     parser.add_argument('--host', default='localhost', help='Host for the broker')
