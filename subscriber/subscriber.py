@@ -5,8 +5,11 @@ import time
 
 def subscriber(subscriber_name, topics, broker_address):
     subscriber_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    subscriber_socket.connect(broker_address)  # Connect to the broker
-
+    #subscriber_socket.connect(broker_address)  # Connect to the broker
+    # Connect to the broker
+    leader_address = get_leader_address(broker_address)
+    subscriber_socket.connect(leader_address)
+    print("Connected to broker:" ,leader_address)
     # Subscribe to each topic
     for topic in topics:
         subscriber_socket.send(f"SUBSCRIBE*{topic}\n".encode())
@@ -37,6 +40,25 @@ def subscriber(subscriber_name, topics, broker_address):
         print(f"Subscriber {subscriber_name} is shutting down.")
     finally:
         subscriber_socket.close()
+
+
+def get_leader_address(broker_address):
+    try:
+        leader_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        leader_socket.connect(broker_address)
+        # Send a request for the current leader's address
+        leader_socket.send("GET_LEADER_ADDRESS\n".encode())
+        # Receive the leader's address as "<host>:<port>"
+        leader_address = leader_socket.recv(1024).decode()
+        # Convert the leader's address to a tuple (host, port)
+        leader_host, leader_port = leader_address.split(":")
+        leader_address = (leader_host, int(leader_port))
+
+        return leader_address
+    except (socket.error, ConnectionRefusedError) as e:
+        print(f"Error getting leader address: {e}")
+        # Handle the error, e.g., return a default address or raise an exception
+        return None  # Return a default value or None to indicate failure
 
 if __name__ == "__main__":
     """if len(sys.argv) < 2:

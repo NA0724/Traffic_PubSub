@@ -35,6 +35,7 @@ class TrafficBroker:
         # Connect to other brokers in the cluster
         for addr in self.cluster_address:
             self.connect_to_cluster_node(addr)
+        self.start_election_thread()
         # Start a thread for gossip protocol
         gossip_thread = threading.Thread(target=self.start_gossip_protocol)
         gossip_thread.start()
@@ -46,7 +47,7 @@ class TrafficBroker:
                 cluster_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 cluster_socket.connect(addr)
                 self.cluster_sockets[addr] = cluster_socket
-                print(f"\033[32mConnected to cluster node at {addr}\033[0m")
+                print(f"\033[32m {self.port} Connected to cluster node at {addr}\033[0m")
                 return
             except Exception as e:
                 if attempt < retry_count - 1:
@@ -66,7 +67,11 @@ class TrafficBroker:
             messages = data.split('\n')
             for message in messages:
                 if message:
-                    self.process_message(message, client_socket)
+                    if message == "GET_LEADER_ADDRESS":
+                        # Handle the GET_LEADER_ADDRESS request
+                        self.handle_get_leader_address(client_socket)
+                    else:
+                        self.process_message(message, client_socket)
         client_socket.close()
 
 
@@ -214,7 +219,15 @@ class TrafficBroker:
     def start_election_thread(self):
         election_thread = threading.Thread(target=self.start_election)
         election_thread.start()
-        
+    
+    def get_leader_address(self):
+        return self.current_leader
+    
+    def handle_get_leader_address(self, client_socket):
+        # Respond to the GET_LEADER_ADDRESS request by sending the current leader's address
+        leader_address = f"{self.current_leader}\n"
+        client_socket.send(leader_address.encode())
+     
     #gossip protocol
     def start_gossip_protocol(self):
         while True:
@@ -312,10 +325,6 @@ if __name__ == "__main__":
     # Optionally, add a small delay to ensure the server is fully up
     time.sleep(1)
     
-    # Remove this if statement later, this is just for testing
-    # Automatically start election if this broker is on port 8888
-    if args.port == 8889:
-        broker.start_election_thread()
 
     # Keep the main thread alive or join the broker thread if you need to
     broker_thread.join()
