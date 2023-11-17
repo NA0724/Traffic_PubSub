@@ -4,42 +4,47 @@ import sys
 import time
 
 def subscriber(subscriber_name, topics, broker_address):
-    subscriber_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #subscriber_socket.connect(broker_address)  # Connect to the broker
-    # Connect to the broker
-    leader_address = get_leader_address(broker_address)
-    subscriber_socket.connect(leader_address)
-    print("Connected to broker:" ,leader_address)
-    # Subscribe to each topic
-    for topic in topics:
-        subscriber_socket.send(f"SUBSCRIBE*{topic}\n".encode())
-        time.sleep(0.1)
+    while True:
+        subscriber_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    try:
-        while True:
-            message = subscriber_socket.recv(1024).decode()
+        try:
+            # Connect to the broker
+            leader_address = get_leader_address(broker_address)
+            subscriber_socket.connect(leader_address)
+            print("Connected to broker:" ,leader_address)
+        
+            # Subscribe to each topic
+            for topic in topics:
+                subscriber_socket.send(f"SUBSCRIBE*{topic}\n".encode())
+                time.sleep(0.1)
+        
+            while True:
+                message = subscriber_socket.recv(1024).decode()
 
-            # Note:
-            # Subscriber code should not expect to receive the command "PUBLISH" or the topic as part of the message. 
-            # It should only expect to receive the data, which is a JSON string.
-            if message:
-                # Parse the JSON data
-                event_data = json.loads(message)
+                # Note:
+                # Subscriber code should not expect to receive the command "PUBLISH" or the topic as part of the message. 
+                # It should only expect to receive the data, which is a JSON string.
+                if message:
+                    # Parse the JSON data
+                    event_data = json.loads(message)
                 
-                # Check if the event's area is one of the interested topics
-                if event_data["area"] in topics:
-                    # Process the event data (you can modify this part as needed)
-                    print(f"Subscriber {subscriber_name} received traffic event:")
-                    print(f"Event ID: {event_data['event_id']}")
-                    print(f"Area: \033[91m{event_data['area']}\033[0m")
-                    print(f"Event Type: {event_data['event_type']}")
-                    print(f"Headline: {event_data['headline']}")
-                    print(f"Updated: {event_data['updated']}")
-                    print()
-    except KeyboardInterrupt:
-        print(f"Subscriber {subscriber_name} is shutting down.")
-    finally:
-        subscriber_socket.close()
+                    # Check if the event's area is one of the interested topics
+                    if event_data["area"] in topics:
+                        # Process the event data (you can modify this part as needed)
+                        print(f"Subscriber {subscriber_name} received traffic event:")
+                        print(f"Event ID: {event_data['event_id']}")
+                        print(f"Area: \033[91m{event_data['area']}\033[0m")
+                        print(f"Event Type: {event_data['event_type']}")
+                        print(f"Headline: {event_data['headline']}")
+                        print(f"Updated: {event_data['updated']}")
+                        print()
+        except ConnectionResetError:
+            print("Connection reset by peer. Broker may have terminated. Attempting to reconnect...")
+        except KeyboardInterrupt:
+            print(f"Subscriber {subscriber_name} is shutting down.")
+            break
+        finally:
+            subscriber_socket.close()
 
 
 def get_leader_address(broker_address):
@@ -74,8 +79,11 @@ if __name__ == "__main__":
         subscriber_name = sys.argv[1]
         broker_address = (sys.argv[2], 8888)
         interested_topics = sys.argv[3:]
-        subscriber(subscriber_name, interested_topics, broker_address)
-    
+        #subscriber(subscriber_name, interested_topics, broker_address)
+        while True:
+            subscriber(subscriber_name, interested_topics, broker_address)
+            print("Reconnecting to a new leader in 2 seconds...")
+            time.sleep(2)
     """Topic(area) List:
         Alameda
         Contra Costa

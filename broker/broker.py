@@ -1,3 +1,4 @@
+import json
 import socket
 import threading
 import multiprocessing
@@ -8,7 +9,8 @@ class TrafficBroker:
     def __init__(self, host, port, cluster_address=None):
         self.host = host
         self.port = port
-        self.topic_subscribers = {}
+        self.topic_subscribers = {} # key: topic, value: list of subscribers' socket objects
+        self.topic_subscribers_addresses = {} # key: topic, value: list of subscribers' socket addresses
         self.lock = threading.Lock()
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # To resolve "address already in use" issue
@@ -20,12 +22,12 @@ class TrafficBroker:
         self.current_leader = None
         self.election_in_progress = False
         self.election_timeout = 10
-        
+        self.cluster_status = {} #dictionary to store details of every broker in the cluster
         self.cluster_address = cluster_address # example: [('localhost', 8889), ('localhost', 8890)].
         if self.cluster_address:
             self.setup_cluster()
 
-        print(f"Broker listening on {host}:{port}", flush=True)
+        print(f"\nBroker listening on {host}:{port}", flush=True)
         
     
     def setup_cluster(self):
@@ -35,10 +37,16 @@ class TrafficBroker:
         # Connect to other brokers in the cluster
         for addr in self.cluster_address:
             self.connect_to_cluster_node(addr)
+        # start election after cluster is formed
         self.start_election_thread()
+        
         # Start a thread for gossip protocol
         gossip_thread = threading.Thread(target=self.start_gossip_protocol)
         gossip_thread.start()
+        
+        # failure_detection_thread = threading.Thread(target=self.start_failure_detection)
+        # failure_detection_thread.daemon = True
+        # failure_detection_thread.start()
 
     def connect_to_cluster_node(self, addr, retry_count = 3, retry_delay=2):
         # Implement a mechanism to connect to other brokers in the cluster
@@ -54,14 +62,14 @@ class TrafficBroker:
                     print(f"Retry {attempt + 1}/{retry_count} connecting to {addr}")
                     time.sleep(retry_delay)
                 else:
-                    print(f"Error connecting to cluster node at {addr}: {e}")
+                    print(f"\nError connecting to cluster node at {addr}: {e}")
 
 
     def handle_client(self, client_socket):
         while True:
-            data = client_socket.recv(1024).decode()
+            data = client_socket.recv(4096).decode()
             if not data:
-                print(f"\033[31mClient {client_socket} disconnected.\033[0m")
+                print(f"\n\033[31mClient {client_socket} disconnected.\033[0m")
                 break
             # Handle the messages
             messages = data.split('\n')
@@ -76,7 +84,7 @@ class TrafficBroker:
 
 
     def process_message(self, message, client_socket):
-        print("Got message: ", message)
+        print("\nGot message: ", message)
         #Process individual message
         parts = message.split("*")
         command = parts[0]
@@ -86,28 +94,38 @@ class TrafficBroker:
                 if topic not in self.topic_subscribers:
                     self.topic_subscribers[topic] = []
                 self.topic_subscribers[topic].append(client_socket)
+                # Extract and add the address to the topic_subscriber_addresses
+                client_address = client_socket.getpeername()  # Returns (IP, port)
+                address_str = f"{client_address[0]}:{client_address[1]}"
+                if topic not in self.topic_subscribers_addresses:
+                    self.topic_subscribers_addresses[topic] = []
+                self.topic_subscribers_addresses[topic].append(address_str)
         elif command == "PUBLISH":
             with self.lock:
                 topic = parts[1]
                 data = parts[2]
                 if topic in self.topic_subscribers:
                     disconnected_subscribers = []
+                    disconnected_addresses = []
                     for subscriber in self.topic_subscribers[topic]:
                         try:
                             subscriber.send((data + '\n').encode())
                         except socket.error as e:
                             disconnected_subscribers.append(subscriber)
+                            # Extract and store the address of the disconnected subscriber
+                            disconnected_address = f"{subscriber.getpeername()[0]}:{subscriber.getpeername()[1]}"
+                            disconnected_addresses.append(disconnected_address)
+                            
+                    # Removing disconnected subscribers from the list and their addresses
                     for subscriber in disconnected_subscribers:
                         self.topic_subscribers[topic].remove(subscriber)
-        elif command == "LOCAL_INFO":
-            with self.lock:
-                # Receive information about the remote broker
-                print(f"Received remote info: {message}")
+                    for address in disconnected_addresses:
+                        if address in self.topic_subscribers_addresses[topic]:
+                            self.topic_subscribers_addresses[topic].remove(address)
 
-                # Parse the received information and update local state accordingly
         elif command == "ELECTION":
             if self.is_leader:
-                print(f"{self.port} ignoring election message as it's already the leader or election has ended.")
+                print(f"\n{self.port} ignoring election message as it's already the leader or election has ended.")
                 return
             sender_addr_str = parts[1]  # Assuming the sender's address is part of the message
             sender_host, sender_port_str = sender_addr_str.split(':')
@@ -118,14 +136,16 @@ class TrafficBroker:
                 self.start_election()
         elif command == "VICTORY":
             # A broker has announced it is the new leader
-            self.current_leader = parts[1]
+            sender_addr_str = parts[1]
+            leader_host, leader_port = sender_addr_str.split(':')
+            self.current_leader = (leader_host, int(leader_port))
             self.is_leader = (self.current_leader == (self.host, self.port))
             self.election_in_progress = False
-            print(f"\033[34mElection ended. Current leader is {self.current_leader}\033[0m")
+            print(f"\n\033[34mElection ended. Current leader is {self.current_leader}\033[0m")
         elif command == "ELECTION_ACK":
             sender_addr = parts[1]
             # Acknowledgement received from a higher broker
-            print(f"Election Acknowledgement received from {sender_addr}")
+            print(f"\nElection Acknowledgement received from {sender_addr}")
             # If an ack is received, it means this broker should not become the leader
             # Reset or update relevant election flags
             self.election_in_progress = False
@@ -133,8 +153,9 @@ class TrafficBroker:
         elif command == "GOSSIP":
             with self.lock:
                 # Process the incoming gossip message
-                status, topics_and_subscriptions = parts[1], parts[2]
-                self.update_local_state(status, topics_and_subscriptions)
+                details = json.loads(parts[1])
+                self.process_gossip_data(details)
+                    
 
 
     def run(self):
@@ -144,26 +165,24 @@ class TrafficBroker:
             client_handler = threading.Thread(target=self.handle_client, args=(client_socket,))
             client_handler.start()
 
-
     # Leader election
     def start_election(self):
         with self.lock:
             if self.election_in_progress or self.is_leader:
-                print(f"Election already in progress on {self.port}")
+                print(f"\nElection already in progress on {self.port}")
                 return
-            print("Starting election.......")
-            print(f"{self.host}:{self.port} starts an election")
+            print(f"\n{self.host}:{self.port} starts an election")
             self.election_in_progress = True
             higher_brokers = [addr for addr in self.cluster_address if addr > (self.host, self.port)]
             
             if not higher_brokers:
                 # This broker has the highest identifier and becomes the leader
-                print("No higher address found")
+                print("\nNo higher address found")
                 self.announce_leader()
                 return
             
             for addr in higher_brokers:
-                print("Higher address:", addr)
+                print("\nHigher address:", addr)
                 # Send an election message to each higher broker
                 self.send_election_message(addr)
                 # Start a timer to wait for a response
@@ -176,7 +195,7 @@ class TrafficBroker:
         with self.lock:
             if self.election_in_progress:
                 # No response received within timeout, declare self as leader
-                print(f"No response received within timeout, declare {self.port} as leader")
+                print(f"\nNo response received within timeout, declare {self.port} as leader")
                 self.announce_leader()
     
     def announce_leader(self):
@@ -187,34 +206,34 @@ class TrafficBroker:
                     self.send_victory_message(addr)
         self.is_leader = True
         self.current_leader = (self.host, self.port)
-        print(f"\033[34mElection ended. Current leader: {self.current_leader}\033[0m")
+        print(f"\n\033[34mElection ended. Current leader: {self.current_leader}\033[0m")
     
     def send_election_message(self, addr):
         # Send an election message to the broker at addr
         try:
             election_message = f"ELECTION*{self.host}:{self.port}\n"
             self.cluster_sockets[addr].send(election_message.encode())
-            print(f"{self.host}:{self.port} sending election message to {addr}")
+            print(f"\n{self.host}:{self.port} sending election message to {addr}")
         except Exception as e:
-            print(f"Error sending election message to {addr}: {e}")
+            print(f"\nError sending election message to {addr}: {e}")
     
     def send_victory_message(self, addr):
         # Announces to other brokers that the current broker has won the election.
         try:
             victory_message = f"VICTORY*{self.host}:{self.port}\n"
             self.cluster_sockets[addr].send(victory_message.encode())
-            print(f"{self.host}:{self.port} sending the victory message to {addr}")
+            print(f"\n{self.host}:{self.port} sending the victory message to {addr}")
         except Exception as e:
-            print(f"Error sending victory message to {addr}: {e}")
+            print(f"\nError sending victory message to {addr}: {e}")
         
     def respond_to_election(self, addr):
         try:
             # Respond to the sender indicating that this broker is still active
             response_message = f"ELECTION_ACK*{self.host}:{self.port}\n"
             self.cluster_sockets[addr].send(response_message.encode())
-            print(f"{self.host}:{self.port} sending ack message to {addr}")
+            print(f"\n{self.host}:{self.port} sending ack message to {addr}")
         except Exception as e:
-            print(f"Error responding to election message from {addr}: {e}")
+            print(f"\nError responding to election message from {addr}: {e}")
     
     def start_election_thread(self):
         election_thread = threading.Thread(target=self.start_election)
@@ -225,80 +244,91 @@ class TrafficBroker:
     
     def handle_get_leader_address(self, client_socket):
         # Respond to the GET_LEADER_ADDRESS request by sending the current leader's address
-        leader_address = f"{self.current_leader}\n"
+        leader_address = f"{self.current_leader[0]}:{self.current_leader[1]}\n"
         client_socket.send(leader_address.encode())
-     
+
     #gossip protocol
     def start_gossip_protocol(self):
         while True:
+            # Check if there are no active brokers in cluster_sockets
+            if not self.cluster_sockets:
+                print("\n\033[33mNo active brokers in cluster_sockets. Gossip ended.\033[0m")
+                break
             # Choose a random broker from the cluster to gossip with
             random_broker = random.choice(list(self.cluster_sockets.keys()))
-            print("Starting gossip, broker chosen: {}".format(random_broker))
+            print(f"\nStarting gossip, {self.port} will gossip with: {random_broker}")
             # Send and receive gossip messages with the chosen broker
             self.send_gossip_message(random_broker)
-            self.receive_gossip_message(random_broker)
 
             # Introduce a delay before the next round of gossip
-            time.sleep(2)  # Adjust the interval as needed
+            time.sleep(5)  # Adjust the interval as needed
     
     def send_gossip_message(self, addr):
         try:
             # Create a gossip message with relevant information
-            gossip_message = f"GOSSIP*{self.get_broker_status()}*{self.get_topics_and_subscriptions()}\n"
+            details = json.dumps(self.get_current_broker_details())
+            gossip_message = f"GOSSIP*{details}\n"
             self.cluster_sockets[addr].send(gossip_message.encode())  
+            print(f"\nSent gossip message to {addr}")
         except Exception as e:
-            print(f"Error sending gossip message to {addr}: {e}")
+            print(f"\nError sending gossip message to {addr}: {e}")
+            self.handle_broker_failure(addr)
 
-    def receive_gossip_message(self, addr):
-        try:
-            # Receive and process gossip message
-            data = self.cluster_sockets[addr].recv(1024).decode()
-            parts = data.split("*")
-            command = parts[0]
+    def process_gossip_data(self, details):
+        # Update your broker's state based on the received gossip data
+        sender_addr = tuple(details['addr'])
+        sender_status = details['status']
+        sender_subscribers = details['topic_subscribers']
+        sender_last_updated = details['last_updated']
+        print(sender_addr, sender_status, sender_subscribers, sender_last_updated)
 
-            if command == "GOSSIP":
-                # Process the gossip message and update local state if needed
-                self.update_local_state(parts[1], parts[2])  # Modify this according to your needs
-        except Exception as e:
-            print(f"Error receiving gossip message from {addr}: {e}")
+        # Update your local information about the sender
+        current_data = self.cluster_status.get(sender_addr, {})
+        current_last_updated = current_data.get("last_updated", 0)
+            
+        if sender_last_updated > current_last_updated:
+            # Check if the current broker is not the leader
+            if not self.is_leader:
+                # Merge the topic subscriber addresses for non-leader nodes
+                merged_subscribers = self.merge_subscribers(self.topic_subscribers_addresses, sender_subscribers)
+                self.topic_subscribers_addresses = merged_subscribers
 
-    def update_local_state(self, status, topics_and_subscriptions):
-        # Process and update local state based on received gossip data
-        print(f"Received gossip status: {status}")
-        print(f"Received gossip topics and subscriptions: {topics_and_subscriptions}")
-        # Update broker status
-        if status == "UP":
-            self.broker_status = "UP"
-        elif status == "FAILED":
-            self.broker_status = "FAILED"
-
-        # Update topics and subscriptions
-        try:
-            topics_subscriptions_dict = eval(topics_and_subscriptions)
-            with self.lock:
-                for topic, subscribers in topics_subscriptions_dict.items():
-                    if topic not in self.topic_subscribers:
-                        self.topic_subscribers[topic] = []
-                    self.topic_subscribers[topic] = subscribers
-        except Exception as e:
-            print(f"Error updating topics and subscriptions: {e}")
-
+            # Update cluster status
+            self.cluster_status[sender_addr] = details
+            print(f"\nUpdated cluster status from gossip: {sender_addr}")
+        else:
+            print(f"\nIgnored older gossip data from: {sender_addr}")
     
-    def get_broker_status(self):
-        try:
-            # Attempt to establish a connection to the server socket
-            test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            test_socket.settimeout(1)  # Set a timeout for the connection attempt
-            test_socket.connect((self.host, self.port))
-            test_socket.close()
-            return "UP"
-        except (socket.error, ConnectionRefusedError):
-            return "FAILED"
-
-    def get_topics_and_subscriptions(self):
+    def merge_subscribers(self, local_subscribers, remote_subscribers):
+        """Merge local and remote subscribers, ensuring no duplicates."""
+        merged_subscribers = {}
+        for topic in set(local_subscribers.keys()).union(remote_subscribers.keys()):
+            local_subs = set(local_subscribers.get(topic, []))
+            remote_subs = set(remote_subscribers.get(topic, []))
+            merged_subscribers[topic] = list(local_subs.union(remote_subs))
+        return merged_subscribers
+    
+    def get_current_broker_details(self):
+        details = {
+            "addr": (self.host, self.port),
+            "status": "UP",
+            "topic_subscribers": self.topic_subscribers_addresses,
+            "last_updated": time.time() # Add a timestamp
+        }
+        return details
+    
+    def handle_broker_failure(self, addr):
+        print(f"\n\033[31mBroker at {addr} is considered failed.\033[0m")
         with self.lock:
-            # Return information about topics and subscriptions
-            return str(self.topic_subscribers)
+            if addr in self.cluster_status:
+                self.cluster_status[addr]['status'] = 'DOWN'
+            if addr in self.cluster_sockets:
+                del self.cluster_sockets[addr]
+                print(f"\nRemoved failed broker {addr} from cluster sockets.")
+            # Check if the failed broker was the current leader
+            if self.current_leader == addr:
+                print(f"\033[33mCurrent leader {addr} has failed. Initiating new election.\033[0m")
+                self.start_election_thread()
 
 
 def parse_args():
