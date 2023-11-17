@@ -1,0 +1,87 @@
+/* General Body Styles */
+body {
+    padding-top: 20px;
+    background-color: #f8f9fa; /* Light grey background */
+    font-family: 'Arial', sans-serif; /* Default font */
+}
+
+/* Container Styles */
+.container {
+    max-width: 800px;
+    margin: auto;
+    background-color: #ffffff; /* White background for content area */
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for container */
+}
+
+/* Header Styles */
+h1.text-center {
+    color: #343a40; /* Dark grey color */
+    margin-bottom: 30px;
+}
+
+/* Button Styles */
+.btn {
+    font-size: 16px; /* Larger font size for buttons */
+    padding: 10px 20px; /* Padding for buttons */
+    margin: 10px; /* Margin around buttons */
+}
+
+.btn-primary {
+    background-color: #007bff; /* Blue color for primary button */
+    border-color: #007bff;
+}
+
+.btn-secondary {
+    background-color: #6c757d; /* Grey color for secondary button */
+    border-color: #6c757d;
+}
+
+.btn-info {
+    background-color: #17a2b8; /* Light blue color for info button */
+    border-color: #17a2b8;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    display: none; /* Hidden by default */
+}
+
+.modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    font-size: 20px;
+    margin-bottom: 10px;
+}
+
+.modal-footer button {
+    margin: 5px;
+}
+
+/* Adjustments for responsive behavior */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+
+    .btn {
+        font-size: 14px; /* Smaller font size for smaller screens */
+        padding: 8px 15px; /* Smaller padding for smaller screens */
+    }
+}
