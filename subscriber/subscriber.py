@@ -82,8 +82,8 @@ if __name__ == "__main__":
         #subscriber(subscriber_name, interested_topics, broker_address)
         while True:
             subscriber(subscriber_name, interested_topics, broker_address)
-            print("Reconnecting to a new leader in 2 seconds...")
-            time.sleep(2)
+            print("Reconnecting to a new leader in 0.5 seconds...")
+            time.sleep(0.5)
     """Topic(area) List:
         Alameda
         Contra Costa
