@@ -9,7 +9,8 @@ class TrafficBroker:
     def __init__(self, host, port, cluster_address=None):
         self.host = host
         self.port = port
-        self.topic_subscribers = {}
+        self.topic_subscribers = {} # key: topic, value: list of subscribers' socket objects
+        self.topic_subscribers_addresses = {} # key: topic, value: list of subscribers' socket addresses
         self.lock = threading.Lock()
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # To resolve "address already in use" issue
@@ -93,20 +94,35 @@ class TrafficBroker:
                 if topic not in self.topic_subscribers:
                     self.topic_subscribers[topic] = []
                 self.topic_subscribers[topic].append(client_socket)
+                # Extract and add the address to the topic_subscriber_addresses
+                client_address = client_socket.getpeername()  # Returns (IP, port)
+                address_str = f"{client_address[0]}:{client_address[1]}"
+                if topic not in self.topic_subscribers_addresses:
+                    self.topic_subscribers_addresses[topic] = []
+                self.topic_subscribers_addresses[topic].append(address_str)
         elif command == "PUBLISH":
             with self.lock:
                 topic = parts[1]
                 data = parts[2]
                 if topic in self.topic_subscribers:
                     disconnected_subscribers = []
+                    disconnected_addresses = []
                     for subscriber in self.topic_subscribers[topic]:
                         try:
                             subscriber.send((data + '\n').encode())
                         except socket.error as e:
                             disconnected_subscribers.append(subscriber)
+                            # Extract and store the address of the disconnected subscriber
+                            disconnected_address = f"{subscriber.getpeername()[0]}:{subscriber.getpeername()[1]}"
+                            disconnected_addresses.append(disconnected_address)
+                            
+                    # Removing disconnected subscribers from the list and their addresses
                     for subscriber in disconnected_subscribers:
                         self.topic_subscribers[topic].remove(subscriber)
-                # Parse the received information and update local state accordingly
+                    for address in disconnected_addresses:
+                        if address in self.topic_subscribers_addresses[topic]:
+                            self.topic_subscribers_addresses[topic].remove(address)
+
         elif command == "ELECTION":
             if self.is_leader:
                 print(f"\n{self.port} ignoring election message as it's already the leader or election has ended.")
@@ -271,18 +287,32 @@ class TrafficBroker:
         current_last_updated = current_data.get("last_updated", 0)
             
         if sender_last_updated > current_last_updated:
-            # The received data is newer, update the local information
+            # Check if the current broker is not the leader
+            if not self.is_leader:
+                # Merge the topic subscriber addresses for non-leader nodes
+                merged_subscribers = self.merge_subscribers(self.topic_subscribers_addresses, sender_subscribers)
+                self.topic_subscribers_addresses = merged_subscribers
+
+            # Update cluster status
             self.cluster_status[sender_addr] = details
             print(f"\nUpdated cluster status from gossip: {sender_addr}")
         else:
-            # The received data is older or the same, no action needed
             print(f"\nIgnored older gossip data from: {sender_addr}")
-            
+    
+    def merge_subscribers(self, local_subscribers, remote_subscribers):
+        """Merge local and remote subscribers, ensuring no duplicates."""
+        merged_subscribers = {}
+        for topic in set(local_subscribers.keys()).union(remote_subscribers.keys()):
+            local_subs = set(local_subscribers.get(topic, []))
+            remote_subs = set(remote_subscribers.get(topic, []))
+            merged_subscribers[topic] = list(local_subs.union(remote_subs))
+        return merged_subscribers
+    
     def get_current_broker_details(self):
         details = {
             "addr": (self.host, self.port),
             "status": "UP",
-            "topic_subscribers": self.topic_subscribers,
+            "topic_subscribers": self.topic_subscribers_addresses,
             "last_updated": time.time() # Add a timestamp
         }
         return details
