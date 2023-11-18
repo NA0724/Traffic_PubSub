@@ -4,6 +4,16 @@ import threading
 import argparse
 import time
 import random
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
 class TrafficBroker:
     def __init__(self, host, port, cluster_address=None):
         # Server
@@ -33,7 +43,7 @@ class TrafficBroker:
         if self.cluster_address:
             self.setup_cluster()
 
-        print(f"\nBroker listening on {host}:{port}", flush=True)
+        logger.info(f"Broker listening on {host}:{port}")
 
 
     def setup_cluster(self):
@@ -55,21 +65,21 @@ class TrafficBroker:
                 cluster_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 cluster_socket.connect(addr)
                 self.cluster_sockets[addr] = cluster_socket
-                print(f"\033[32m {self.port} Connected to cluster node at {addr}\033[0m")
+                logger.info(f"\033[32m {self.port} Connected to cluster node at {addr}\033[0m")
                 return
             except Exception as e:
                 if attempt < retry_count - 1:
-                    print(f"Retry {attempt + 1}/{retry_count} connecting to {addr}")
+                    logger.exception(f"Retry {attempt + 1}/{retry_count} connecting to {addr}")
                     time.sleep(retry_delay)
                 else:
-                    print(f"\nError connecting to cluster node at {addr}: {e}")
+                    logger.error(f"\nError connecting to cluster node at {addr}: {e}")
 
 
     def handle_client(self, client_socket):
         while True:
             data = client_socket.recv(4096).decode()
             if not data:
-                print(f"\n\033[31mClient {client_socket} disconnected.\033[0m")
+                logger.info(f"\n\033[31mClient {client_socket} disconnected.\033[0m")
                 break
             # Handle the messages
             messages = data.split('\n')
@@ -80,7 +90,7 @@ class TrafficBroker:
         
         
     def process_message(self, message, client_socket):
-        print("\nGot message: ", message)
+        logger.info(f"Got message: {message}")
         #Process individual message
         parts = message.split("*")
         command = parts[0]
@@ -127,7 +137,7 @@ class TrafficBroker:
 
         elif command == "ELECTION":
             if self.is_leader:
-                print(f"\n{self.port} ignoring election message as it's already the leader or election has ended.")
+                logger.info(f"\n{self.port} ignoring election message as it's already the leader or election has ended.")
                 return
             sender_addr_str = parts[1]  # Assuming the sender's address is part of the message
             received_timestamp = int(parts[2])
@@ -148,7 +158,7 @@ class TrafficBroker:
                 self.current_leader = (leader_host, int(leader_port))
                 self.is_leader = (self.current_leader == (self.host, self.port))
                 self.election_in_progress = False
-                print(f"\n\033[34mElection ended. Current leader is {self.current_leader}\033[0m")
+                logger.info(f"\n\033[34mElection ended. Current leader is {self.current_leader}\033[0m")
         elif command == "ELECTION_ACK":
             sender_addr = parts[1]
             received_timestamp = int(parts[2])
@@ -173,7 +183,7 @@ class TrafficBroker:
     def run(self):
         while True:
             client_socket, addr = self.server.accept()
-            print(f"\033[32mAccepted connection from {addr}\033[0m")
+            logger.info(f"\033[32mAccepted connection from {addr}\033[0m")
             client_handler = threading.Thread(target=self.handle_client, args=(client_socket,))
             client_handler.start()
 
@@ -181,21 +191,21 @@ class TrafficBroker:
     # Leader election
     def start_election(self):
         if self.election_in_progress or self.is_leader:
-            print(f"\nElection already in progress on {self.port}")
+            logger.warning(f"\nElection already in progress on {self.port}")
             return
-        print(f"\n\033[34m{self.host}:{self.port} starts an election\033[0m")
+        logger.info(f"\n\033[34m{self.host}:{self.port} starts an election\033[0m")
         with self.election_lock:
             self.election_in_progress = True
         higher_brokers = [addr for addr in self.cluster_address if addr > (self.host, self.port)]
         self.increment_timestamp()    
         if not higher_brokers:
             # This broker has the highest identifier and becomes the leader
-            print("\nNo higher address found")
+            logger.info("\nNo higher address found")
             self.announce_leader()
             return
             
         for addr in higher_brokers:
-            print("\nHigher address:", addr)
+            logger.info(f"\nHigher address:{addr}")
             # Send an election message to each higher broker
             self.send_election_message(addr)
             # Start a timer to wait for a response
@@ -209,7 +219,7 @@ class TrafficBroker:
     def check_election_timeout(self):
         if self.election_in_progress:
             # No response received within timeout, declare self as leader
-            print(f"\nNo response received within timeout, declare {self.port} as leader")
+            logger.warning(f"\nNo response received within timeout, declare {self.port} as leader")
             self.announce_leader()
     
     
@@ -222,7 +232,7 @@ class TrafficBroker:
         with self.election_lock:
             self.is_leader = True
             self.current_leader = (self.host, self.port)
-            print(f"\n\033[34mElection ended. Current leader: {self.current_leader}\033[0m")
+            logger.info(f"\n\033[34mElection ended. Current leader: {self.current_leader}\033[0m")
     
     
     def send_election_message(self, addr):
@@ -231,9 +241,9 @@ class TrafficBroker:
             self.increment_timestamp()
             election_message = f"ELECTION*{self.host}:{self.port}*{self.lamport_timestamp}\n"
             self.cluster_sockets[addr].send(election_message.encode())
-            print(f"\n{self.host}:{self.port} sending election message to {addr}")
+            logger.info(f"\n{self.host}:{self.port} sending election message to {addr}")
         except Exception as e:
-            print(f"\nError sending election message to {addr}: {e}")
+            logger.exception(f"\nError sending election message to {addr}: {e}")
     
     
     def send_victory_message(self, addr):
@@ -244,7 +254,7 @@ class TrafficBroker:
             self.cluster_sockets[addr].send(victory_message.encode())
             print(f"\n{self.host}:{self.port} sending the victory message to {addr}")
         except Exception as e:
-            print(f"\nError sending victory message to {addr}: {e}")
+            logger.exception(f"\nError sending victory message to {addr}: {e}")
         
         
     def respond_to_election(self, addr):
@@ -255,7 +265,7 @@ class TrafficBroker:
             self.cluster_sockets[addr].send(response_message.encode())
             print(f"\n{self.host}:{self.port} sending ack message to {addr}")
         except Exception as e:
-            print(f"\nError responding to election message from {addr}: {e}")
+            logger.exception(f"\nError responding to election message from {addr}: {e}")
     
     
     def start_election_thread(self):
@@ -279,11 +289,11 @@ class TrafficBroker:
         while True:
             # Check if there are no active brokers in cluster_sockets
             if not self.cluster_sockets:
-                print("\n\033[33mNo active brokers in cluster_sockets. Gossip ended.\033[0m")
+                logger.info("\n\033[33mNo active brokers in cluster_sockets. Gossip ended.\033[0m")
                 break
             # Choose a random broker from the cluster to gossip with
             random_broker = random.choice(list(self.cluster_sockets.keys()))
-            print(f"\nStarting gossip, {self.port} will gossip with: {random_broker}")
+            logger.info(f"\nStarting gossip, {self.port} will gossip with: {random_broker}")
             self.increment_timestamp()
             # Send and receive gossip messages with the chosen broker
             self.send_gossip_message(random_broker)
@@ -300,7 +310,7 @@ class TrafficBroker:
             gossip_message = f"GOSSIP*{details}\n"
             self.cluster_sockets[addr].send(gossip_message.encode())  
         except Exception as e:
-            print(f"\nError sending gossip message to {addr}: {e}")
+            logger.exception(f"\nError sending gossip message to {addr}: {e}")
             self.handle_broker_failure(addr)
 
 
@@ -321,9 +331,9 @@ class TrafficBroker:
 
             # Update cluster status
             self.cluster_status[sender_addr] = details
-            print(f"\nUpdated cluster status from gossip: {sender_addr}")
+            logger.info(f"\nUpdated cluster status from gossip: {sender_addr}")
         else:
-            print(f"\nIgnored older gossip data from: {sender_addr}")
+            logger.info(f"\nIgnored older gossip data from: {sender_addr}")
     
     
     def merge_subscribers(self, local_subscribers, remote_subscribers):
@@ -353,10 +363,10 @@ class TrafficBroker:
                 self.cluster_status[addr]['status'] = 'DOWN'
             if addr in self.cluster_sockets:
                 del self.cluster_sockets[addr]
-                print(f"\nRemoved failed broker {addr} from cluster sockets.")
+                logger.info(f"\nRemoved failed broker {addr} from cluster sockets.")
             # Check if the failed broker was the current leader
             if self.current_leader == addr:
-                print(f"\033[33mCurrent leader {addr} has failed. Initiating new election.\033[0m")
+                logger.warning(f"\033[33mCurrent leader {addr} has failed. Initiating new election.\033[0m")
                 self.start_election_thread()
 
 

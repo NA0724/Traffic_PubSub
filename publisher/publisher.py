@@ -5,6 +5,15 @@ import sys
 from dataclasses import asdict
 from traffic_data_fetcher import TrafficDataFetcher
 from traffic_data_fetcher import Event
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 lamport_timestamp = 0
 
@@ -16,16 +25,16 @@ def publisher(broker_addresses):
             leader_address = get_leader_address(broker_address)
             if leader_address:
                 publisher_socket.connect(leader_address)  # Connect to the broker
-                print(f"Connected to broker at {leader_address}")
+                logger.info(f"Connected to broker at {leader_address}")
                 break
             else:
-                print(f"Failed to get leader address from broker: {broker_address}")
+                logger.error(f"Failed to get leader address from broker: {broker_address}")
         except (socket.error, ConnectionRefusedError) as e:
-            print(f"Error connecting to broker {broker_address}: {e}")
+            logger.error(f"Error connecting to broker {broker_address}: {e}")
             publisher_socket.close()
 
     if not leader_address:
-        print("Failed to connect to any broker. Exiting.")
+        logger.error("Failed to connect to any broker. Exiting.")
         return
 
     fetcher = TrafficDataFetcher(api_url="http://api.511.org/traffic/", api_key="9d297b1d-eb23-4a0c-bd71-ec8bd076ab10")
@@ -46,18 +55,18 @@ def publisher(broker_addresses):
                 # Include the topic in the message
                 lamport_timestamp += 1
                 message = f"PUBLISH*{topic}*{json.dumps(event_dict)}*{lamport_timestamp}\n"
-                print("Sending data:", message)
+                logger.info("Sending data:", message)
                 publisher_socket.sendall(message.encode('utf-8'))
                 print("Data sent\n")
                 # Optionally, add a delay between sending individual events
                 time.sleep(0.1)
         else:
-            print("No raw data")
+            logger.error("No raw data")
 
     except KeyboardInterrupt:
-        print("Publisher interrupted.")
+        logger.error("Publisher interrupted.")
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.exception(f"An error occurred: {e}")
 
 
 def get_leader_address(broker_address):
@@ -78,9 +87,8 @@ def get_leader_address(broker_address):
 
         return leader_address
     except (socket.error, ConnectionRefusedError) as e:
-        print(f"Error getting leader address: {e}")
-        # Handle the error, e.g., return a default address or raise an exception
-        return None  # Return a default value or None to indicate failure
+        logger.error(f"Error getting leader address: {e}")
+        return None  # Return None to indicate failure
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

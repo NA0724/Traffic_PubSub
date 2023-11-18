@@ -2,6 +2,15 @@ import socket
 import json
 import sys
 import time
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 lamport_timestamp = 0
 
@@ -14,18 +23,18 @@ def subscriber(subscriber_name, topics, broker_addresses):
             leader_address = get_leader_address(broker_address)
             if leader_address:
                 subscriber_socket.connect(leader_address)
-                print(f"Connected to broker: {leader_address}")
+                logger.info(f"Connected to broker: {leader_address}")
                 break
             else:
-                print(f"Failed to get leader address from broker: {broker_address}")
+                logger.error(f"Failed to get leader address from broker: {broker_address}")
         except (socket.error, ConnectionRefusedError) as e:
-            print(f"Error connecting to broker {broker_address}: {e}")
+            logger.exception(f"Error connecting to broker {broker_address}: {e}")
             subscriber_socket.close()
 
     if not leader_address:
-        print("Failed to connect to any broker. Exiting.")
-        return
-        
+       logger.error("Failed to connect to any broker. Exiting.")
+       return
+    
     # Subscribe to each topic
     try:
         for topic in topics:
@@ -54,11 +63,11 @@ def subscriber(subscriber_name, topics, broker_addresses):
                         print()
             
     except ConnectionResetError:
-        print("Connection reset by peer. Broker may have terminated. Attempting to reconnect...")
+        logger.error("Connection reset by peer. Broker may have terminated. Attempting to reconnect...")
         subscriber_socket.close()
         return subscriber(subscriber_name, topics, broker_addresses)  # Recursively call subscriber to reconnect
     except KeyboardInterrupt:
-        print(f"Subscriber {subscriber_name} is shutting down.")
+        logger.error(f"Subscriber {subscriber_name} is shutting down.")
     finally:
         subscriber_socket.close()
 
@@ -81,9 +90,8 @@ def get_leader_address(broker_address):
 
         return leader_address
     except (socket.error, ConnectionRefusedError) as e:
-        print(f"Error getting leader address: {e}")
-        # Handle the error, e.g., return a default address or raise an exception
-        return None  # Return a default value or None to indicate failure
+        logger.error(f"Error getting leader address: {e}")
+        return None  # Return None to indicate failure
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
