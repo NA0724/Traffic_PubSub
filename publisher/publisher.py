@@ -1,55 +1,63 @@
 import json
 import socket
 import time
+import sys
 from dataclasses import asdict
 from traffic_data_fetcher import TrafficDataFetcher
 from traffic_data_fetcher import Event
 
 lamport_timestamp = 0
 
-def publisher(broker_address):
-    leader_address = get_leader_address(broker_address)
-    if leader_address is None:
-        print("Failed to retrieve the leader's address. Exiting.")
-        return
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as publisher_socket:
+def publisher(broker_addresses):
+    leader_address = None
+    for broker_address in broker_addresses:
         try:
-            publisher_socket.connect(leader_address)  # Connect to the broker
-            print(f"Connected to broker at {leader_address}")
-        except ConnectionError as e:
-            print(f"Failed to connect to broker: {e}")
-            return
-
-        fetcher = TrafficDataFetcher(api_url="http://api.511.org/traffic/", api_key="9d297b1d-eb23-4a0c-bd71-ec8bd076ab10")
-        global lamport_timestamp
-        try:
-            raw_data = fetcher.fetch_data("events")  # Get JSON data from the TrafficDataFetcher class
-            if raw_data:
-                # Get the processed events
-                fetcher.extract_data(raw_data) 
-                events = fetcher.get_fetched_events()
-                # Clear the fetched events after processing
-                #fetcher.events_fetched.clear()
-                for event in events:
-                    # Use the 'area' attribute of the event as the topic
-                    topic = event.area
-                    # Convert the event object to a JSON-serializable dictionary
-                    event_dict = asdict(event)
-                    # Include the topic in the message
-                    lamport_timestamp += 1
-                    message = f"PUBLISH*{topic}*{json.dumps(event_dict)}*{lamport_timestamp}\n"
-                    print("Sending data:", message)
-                    publisher_socket.sendall(message.encode('utf-8'))
-                    print("Data sent\n")
-                    # Optionally, add a delay between sending individual events
-                    time.sleep(0.1)
+            publisher_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            leader_address = get_leader_address(broker_address)
+            if leader_address:
+                publisher_socket.connect(leader_address)  # Connect to the broker
+                print(f"Connected to broker at {leader_address}")
+                break
             else:
-                print("No raw data")
+                print(f"Failed to get leader address from broker: {broker_address}")
+        except (socket.error, ConnectionRefusedError) as e:
+            print(f"Error connecting to broker {broker_address}: {e}")
+            publisher_socket.close()
 
-        except KeyboardInterrupt:
-            print("Publisher interrupted.")
-        except Exception as e:
-            print(f"An error occurred: {e}")
+    if not leader_address:
+        print("Failed to connect to any broker. Exiting.")
+        return
+
+    fetcher = TrafficDataFetcher(api_url="http://api.511.org/traffic/", api_key="9d297b1d-eb23-4a0c-bd71-ec8bd076ab10")
+    global lamport_timestamp
+    try:
+        raw_data = fetcher.fetch_data("events")  # Get JSON data from the TrafficDataFetcher class
+        if raw_data:
+            # Get the processed events
+            fetcher.extract_data(raw_data) 
+            events = fetcher.get_fetched_events()
+            # Clear the fetched events after processing
+            #fetcher.events_fetched.clear()
+            for event in events:
+                # Use the 'area' attribute of the event as the topic
+                topic = event.area
+                # Convert the event object to a JSON-serializable dictionary
+                event_dict = asdict(event)
+                # Include the topic in the message
+                lamport_timestamp += 1
+                message = f"PUBLISH*{topic}*{json.dumps(event_dict)}*{lamport_timestamp}\n"
+                print("Sending data:", message)
+                publisher_socket.sendall(message.encode('utf-8'))
+                print("Data sent\n")
+                # Optionally, add a delay between sending individual events
+                time.sleep(0.1)
+        else:
+            print("No raw data")
+
+    except KeyboardInterrupt:
+        print("Publisher interrupted.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 def get_leader_address(broker_address):
@@ -75,8 +83,11 @@ def get_leader_address(broker_address):
         return None  # Return a default value or None to indicate failure
 
 if __name__ == "__main__":
-    broker_host = 'localhost'
-    broker_port = 8888
-    #publisher(broker_host, broker_port)
-    broker_address = (broker_host, broker_port)
-    publisher(broker_address)
+    if len(sys.argv) < 2:
+        print("Usage: python publisher.py <broker_address1> <broker_address2> ...")
+    else:
+        broker_addresses = []
+        for arg in sys.argv[1:]:
+            host, port = arg.split(':')
+            broker_addresses.append((host, int(port)))
+        publisher(broker_addresses)
