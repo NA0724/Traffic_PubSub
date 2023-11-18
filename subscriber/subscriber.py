@@ -108,12 +108,14 @@ if __name__ == "__main__":
                 topics.append(arg)
         subscriber(subscriber_name, topics, broker_addresses)
 
-
     """
-        Sample command:
+    
+    Sample command:
         python3 subscriber.py "Sub1" "localhost:8888" "localhost:8889" "localhost:8890" "Santa Clara" "Santa Cruz"
     
         Topic(area) List:
+    
+
         Alameda
         Contra Costa
         Marin
