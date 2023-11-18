@@ -1,2 +1,4 @@
 .DS_Store
 .pyc
+.cpython-311.pyc
+publisher/__pycache__/traffic_data_fetcher.cpython-311.pyc
