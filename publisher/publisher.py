@@ -55,7 +55,7 @@ def publisher(broker_addresses):
                 # Include the topic in the message
                 lamport_timestamp += 1
                 message = f"PUBLISH*{topic}*{json.dumps(event_dict)}*{lamport_timestamp}\n"
-                logger.info("Sending data:{message}")
+                logger.info(f"Sending data:{message}")
                 publisher_socket.sendall(message.encode('utf-8'))
                 print("Data sent\n")
                 # Optionally, add a delay between sending individual events
