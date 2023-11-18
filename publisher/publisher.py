@@ -5,25 +5,7 @@ from dataclasses import asdict
 from traffic_data_fetcher import TrafficDataFetcher
 from traffic_data_fetcher import Event
 
-
-def get_leader_address(broker_address):
-    try:
-        leader_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        leader_socket.connect(broker_address)
-        # Send a request for the current leader's address
-        leader_socket.send("GET_LEADER_ADDRESS\n".encode())
-        # Receive the leader's address as "<host>:<port>"
-        leader_address = leader_socket.recv(1024).decode()
-        print("Leader broker address", leader_address)
-        # Convert the leader's address to a tuple (host, port)
-        leader_host, leader_port = leader_address.split(":")
-        leader_address = (leader_host, int(leader_port))
-        return leader_address
-    
-    except (socket.error, ConnectionRefusedError) as e:
-        print(f"Error getting leader address: {e}")
-        # Handle the error, e.g., return a default address or raise an exception
-        return None  # Return a default value or None to indicate failure
+lamport_timestamp = 0
 
 def publisher(broker_address):
     leader_address = get_leader_address(broker_address)
@@ -39,7 +21,7 @@ def publisher(broker_address):
             return
 
         fetcher = TrafficDataFetcher(api_url="http://api.511.org/traffic/", api_key="9d297b1d-eb23-4a0c-bd71-ec8bd076ab10")
-
+        global lamport_timestamp
         try:
             raw_data = fetcher.fetch_data("events")  # Get JSON data from the TrafficDataFetcher class
             if raw_data:
@@ -54,7 +36,8 @@ def publisher(broker_address):
                     # Convert the event object to a JSON-serializable dictionary
                     event_dict = asdict(event)
                     # Include the topic in the message
-                    message = f"PUBLISH*{topic}*{json.dumps(event_dict)}\n"
+                    lamport_timestamp += 1
+                    message = f"PUBLISH*{topic}*{json.dumps(event_dict)}*{lamport_timestamp}\n"
                     print("Sending data:", message)
                     publisher_socket.sendall(message.encode('utf-8'))
                     print("Data sent\n")
@@ -67,6 +50,29 @@ def publisher(broker_address):
             print("Publisher interrupted.")
         except Exception as e:
             print(f"An error occurred: {e}")
+
+
+def get_leader_address(broker_address):
+    try:
+        global lamport_timestamp
+        lamport_timestamp += 1
+        leader_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        leader_socket.connect(broker_address)
+        # Send a request for the current leader's address
+        leader_socket.send(f"GET_LEADER_ADDRESS*{lamport_timestamp}\n".encode())
+        # Receive the leader's address as "<host>:<port>"
+        message = leader_socket.recv(1024).decode()
+        address_str, timestamp_str = message.split("*")
+        # Convert the leader's address to a tuple (host, port)
+        leader_host, leader_port = address_str.split(":")
+        leader_address = (leader_host, int(leader_port))
+        lamport_timestamp = max(lamport_timestamp, int(timestamp_str)) + 1
+
+        return leader_address
+    except (socket.error, ConnectionRefusedError) as e:
+        print(f"Error getting leader address: {e}")
+        # Handle the error, e.g., return a default address or raise an exception
+        return None  # Return a default value or None to indicate failure
 
 if __name__ == "__main__":
     broker_host = 'localhost'
