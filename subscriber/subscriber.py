@@ -71,7 +71,7 @@ def subscriber(subscriber_name, topics, broker_addresses):
             # Check for heartbeat timeout
             if time.time() - last_heartbeat_time > heartbeat_timeout:
                 logger.error("Heartbeat missed. Reconnecting...")
-                time.sleep(6)
+                time.sleep(10)
                 subscriber_socket.close()
                 return subscriber(subscriber_name, topics, broker_addresses)
             

@@ -384,7 +384,9 @@ class TrafficBroker:
                 self.cluster_status[addr]['status'] = 'DOWN'
             if addr in self.cluster_sockets:
                 del self.cluster_sockets[addr]
-                logger.info(f"Removed failed broker {addr} from cluster sockets.")
+            if addr in self.cluster_address:
+                self.cluster_address.remove(addr)
+                logger.info(f"Removed failed broker {addr} from cluster addresses.")
             # Check if the failed broker was the current leader
             if self.current_leader == addr:
                 logger.warning(f"\033[33mCurrent leader {addr} has failed. Initiating new election.\033[0m")
