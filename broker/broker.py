@@ -122,21 +122,12 @@ class TrafficBroker:
                     try:
                         self.increment_timestamp()
                         subscriber.send(f"{data}*{self.lamport_timestamp}\n".encode())
-                    except OSError as o:
-                        logger.error(f"Error sending message to subscriber: {o}")
-                    finally:
-                        try:
-                            with self.subscriber_lock:
-                                disconnected_subscribers.append(subscriber)
-                                # Extract and store the address of the disconnected subscriber
-                                if subscriber.fileno() != -1:
-                                    disconnected_address = f"{subscriber.getpeername()[0]}:{subscriber.getpeername()[1]}"
-                                    logger.info(f"Subscriber {disconnected_address} disconnected.")
-                                disconnected_addresses.append(disconnected_address)
-                        except OSError as e:
-                            # Handle the OSError, e.g., log the error
-                            logger.error(f"Error getting peer address: {e}")
-                
+                    except socket.error as e:
+                        with self.subscriber_lock:
+                            disconnected_subscribers.append(subscriber)
+                            # Extract and store the address of the disconnected subscriber
+                            disconnected_address = f"{subscriber.getpeername()[0]}:{subscriber.getpeername()[1]}"
+                            disconnected_addresses.append(disconnected_address)
                 with self.subscriber_lock:
                     # Removing disconnected subscribers from the list and their addresses
                     for subscriber in disconnected_subscribers:
