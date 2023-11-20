@@ -13,7 +13,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 lamport_timestamp = 0
-
+heartbeat_timeout = 6
 def subscriber(subscriber_name, topics, broker_addresses):
     leader_address = None
     for broker_address in broker_addresses:
@@ -32,8 +32,8 @@ def subscriber(subscriber_name, topics, broker_addresses):
             subscriber_socket.close()
 
     if not leader_address:
-       logger.error("Failed to connect to any broker. Exiting.")
-       return
+        logger.error("Failed to connect to any broker. Exiting.")
+        return
     
     # Subscribe to each topic
     try:
@@ -42,12 +42,19 @@ def subscriber(subscriber_name, topics, broker_addresses):
             lamport_timestamp += 1
             subscriber_socket.send(f"SUBSCRIBE*{topic}*{lamport_timestamp}\n".encode())
             time.sleep(0.1)
-
+            
+        last_heartbeat_time = time.time()
         while True:
             message = subscriber_socket.recv(1024).decode()
+            logger.info(f"\033[91m Message received from broker: {message}\033[0m")
             if message:
                 parts = message.split('*')
-                if len(parts) >= 2:
+                if parts[0] == "HEARTBEAT":
+                    last_heartbeat_time = time.time()
+                    logger.info("Heartbeat received")
+                    received_timestamp = int(parts[1])
+                    lamport_timestamp = max(lamport_timestamp, received_timestamp) + 1
+                else:
                     received_data = parts[0]
                     received_timestamp = int(parts[1])
                     lamport_timestamp = max(lamport_timestamp, received_timestamp) + 1
@@ -61,6 +68,13 @@ def subscriber(subscriber_name, topics, broker_addresses):
                         print(f"Updated: {event_data['updated']}")
                         print(f"\033[32mLamport timestamp: {lamport_timestamp}\033[0m")
                         print()
+                
+            # Check for heartbeat timeout
+            if time.time() - last_heartbeat_time > heartbeat_timeout:
+                logger.error("Heartbeat missed. Reconnecting...")
+                time.sleep(10)
+                subscriber_socket.close()
+                return subscriber(subscriber_name, topics, broker_addresses)
             
     except ConnectionResetError:
         logger.error("Connection reset by peer. Broker may have terminated. Attempting to reconnect...")
@@ -108,12 +122,13 @@ if __name__ == "__main__":
                 topics.append(arg)
         subscriber(subscriber_name, topics, broker_addresses)
 
-
     """
-        Sample command:
+    
+    Sample command:
         python3 subscriber.py "Sub1" "localhost:8888" "localhost:8889" "localhost:8890" "Santa Clara" "Santa Cruz"
     
         Topic(area) List:
+    
 
         Alameda
         Contra Costa
