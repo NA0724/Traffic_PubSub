@@ -21,7 +21,7 @@ class TrafficBroker:
         self.port = port
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) # To resolve "address already in use" issue
-        self.server.bind((host, port))
+        self.server.bind(('0.0.0.0', port))
         self.server.listen(10)
         # Subscription
         self.topic_subscribers = {} # key: topic, value: list of subscribers' socket objects
@@ -37,6 +37,8 @@ class TrafficBroker:
         self.lamport_timestamp = 0
         self.timestamp_lock = threading.Lock()  # Lock for synchronizing timestamp updates
         # Cluster 
+        self.last_gossip_time = {}
+        self.timeout_lock = threading.Lock()
         self.cluster_sockets = {} # Dictionary to store connections example: {('localhost', 8889): <socket object>, ('localhost', 8890): <socket object>}.
         self.cluster_status = {} #dictionary to store details of every broker in the cluster
         self.cluster_address = cluster_address # example: [('localhost', 8889), ('localhost', 8890)].
@@ -52,11 +54,15 @@ class TrafficBroker:
             self.connect_to_cluster_node(addr)
         # start election after cluster is formed
         self.start_election_thread()
-        
+        time.sleep(1)
         # Start a thread for gossip protocol
         self.increment_timestamp()
         gossip_thread = threading.Thread(target=self.start_gossip_protocol)
         gossip_thread.start()
+        
+        # Start a thread for gossip timeout
+        timeout_check_thread = threading.Thread(target=self.check_gossip_timeouts)
+        timeout_check_thread.start()
 
 
     def connect_to_cluster_node(self, addr, retry_count = 3, retry_delay=2):
@@ -137,9 +143,9 @@ class TrafficBroker:
                             self.topic_subscribers_addresses[topic].remove(address)
 
         elif command == "ELECTION":
-            if self.is_leader:
-                logger.info(f"{self.port} ignoring election message as it's already the leader or election has ended.")
-                return
+            # if self.is_leader:
+            #     logger.info(f"{self.port} ignoring election message as it's already the leader or election has ended.")
+            #     return
             sender_addr_str = parts[1]  # Assuming the sender's address is part of the message
             received_timestamp = int(parts[2])
             self.update_timestamp(received_timestamp)
@@ -172,10 +178,9 @@ class TrafficBroker:
                 self.election_in_progress = False
                 self.is_leader = False
         elif command == "GOSSIP":
-            with self.subscriber_lock:
-                # Process the incoming gossip message
-                details = json.loads(parts[1])
-                self.process_gossip_data(details)
+            # Process the incoming gossip message
+            details = json.loads(parts[1])
+            self.process_gossip_data(details)
         elif command == "GET_LEADER_ADDRESS":
             # Handle the GET_LEADER_ADDRESS request
             self.handle_get_leader_address(client_socket)
@@ -197,16 +202,17 @@ class TrafficBroker:
         logger.info(f"\033[34m{self.host}:{self.port} starts an election\033[0m")
         with self.election_lock:
             self.election_in_progress = True
-        higher_brokers = [addr for addr in self.cluster_address if addr > (self.host, self.port)]
+        # Compare only the port numbers to find higher brokers
+        higher_brokers = [addr for addr in self.cluster_address if addr[1] > self.port]
         self.increment_timestamp()    
         if not higher_brokers:
             # This broker has the highest identifier and becomes the leader
-            logger.info("No higher address found")
+            logger.info("No higher port number found")
             self.announce_leader()
             return
             
         for addr in higher_brokers:
-            logger.info(f"Higher address:{addr}")
+            logger.info(f"Higher port number found at address:{addr}")
             # Send an election message to each higher broker
             self.send_election_message(addr)
             # Start a timer to wait for a response
@@ -343,19 +349,21 @@ class TrafficBroker:
         sender_timestamp = int(details['timestamp'])
 
         # Update your local information about the sender
-        if sender_timestamp > self.lamport_timestamp:
-            # Check if the current broker is not the leader
-            if not self.is_leader:
-                # Merge the topic subscriber addresses for non-leader nodes
-                merged_subscribers = self.merge_subscribers(self.topic_subscribers_addresses, sender_subscribers)
-                self.topic_subscribers_addresses = merged_subscribers
+        self.update_last_gossip_time(sender_addr)
+        with self.subscriber_lock:
+            if sender_timestamp > self.lamport_timestamp:
+                # Check if the current broker is not the leader
+                if not self.is_leader:
+                    # Merge the topic subscriber addresses for non-leader nodes
+                    merged_subscribers = self.merge_subscribers(self.topic_subscribers_addresses, sender_subscribers)
+                    self.topic_subscribers_addresses = merged_subscribers
 
-            # Update cluster status
-            self.cluster_status[sender_addr] = details
-            logger.info(f"Updated cluster status from gossip: {sender_addr}")
-        else:
-            logger.info(f"Ignored older gossip data from: {sender_addr}")
-    
+                # Update cluster status
+                self.cluster_status[sender_addr] = details
+                logger.info(f"Updated cluster status from gossip: {sender_addr}")
+            else:
+                logger.info(f"Ignored older gossip data from: {sender_addr}")
+        
     
     def merge_subscribers(self, local_subscribers, remote_subscribers):
         """Merge local and remote subscribers, ensuring no duplicates."""
@@ -376,6 +384,24 @@ class TrafficBroker:
         }
         return details
     
+    def update_last_gossip_time(self, broker_addr):
+        with self.timeout_lock:
+            self.last_gossip_time[broker_addr] = time.time()
+
+    def check_gossip_timeouts(self):
+        timeout_threshold = 30  # seconds
+        while True:
+            current_time = time.time()
+            for broker_addr, last_contact in list(self.last_gossip_time.items()):
+                if current_time - last_contact > timeout_threshold:
+                    logger.error(f"Timeout detected for broker {broker_addr}")
+                    # Handle the broker failure
+                    self.handle_broker_failure(broker_addr)
+                    # Remove the failed broker from the last_gossip_time dictionary
+                    with self.timeout_lock:
+                        del self.last_gossip_time[broker_addr]
+                        
+            time.sleep(10)  # Check every 10 seconds
     
     def handle_broker_failure(self, addr):
         print(f"\033[31mBroker at {addr} is considered failed.\033[0m")
@@ -405,7 +431,7 @@ class TrafficBroker:
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Traffic Broker')
-    parser.add_argument('--host', default='localhost', help='Host for the broker')
+    parser.add_argument('--host', required=True, help='Actual address of the broker (container name or IP)')
     parser.add_argument('--port', type=int, required=True, help='Port for the broker')
     parser.add_argument('--cluster', nargs='*', help='List of other brokers in the cluster (host:port)', default=[])
     return parser.parse_args()
