@@ -293,11 +293,18 @@ class TrafficBroker:
 
     #gossip protocol
     def start_gossip_protocol(self):
+        info = "\033[33mNo active brokers in cluster_sockets. Gossip ended.\033[0m"
         while True:
             # Check if there are no active brokers in cluster_sockets
             if not self.cluster_sockets:
-                logger.info("\033[33mNo active brokers in cluster_sockets. Gossip ended.\033[0m")
-                break
+                logger.info(info)
+                info = "Continue sending heartbeat to all the subscribers..."
+                # Keep sending heartbeat
+                if self.is_leader:
+                    self.send_heartbeat_message()
+                time.sleep(3)
+                continue
+            
             # Choose a random broker from the cluster to gossip with
             random_broker = random.choice(list(self.cluster_sockets.keys()))
             logger.info(f"Starting gossip, {self.port} will gossip with: {random_broker}")
@@ -305,6 +312,7 @@ class TrafficBroker:
             self.send_gossip_message(random_broker)
             # Send heartbeat messages to all the subscribers
             if self.is_leader:
+                logger.info("Sending heartbeat to all the subscribers...")
                 self.send_heartbeat_message()
             # Introduce a delay before the next round of gossip
             time.sleep(3)  # Adjust the interval as needed
