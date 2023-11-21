@@ -203,6 +203,7 @@ class TrafficBroker:
         if not higher_brokers:
             # This broker has the highest identifier and becomes the leader
             logger.info("No higher port number found")
+
             self.announce_leader()
             return
             
