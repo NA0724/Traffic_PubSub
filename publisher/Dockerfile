@@ -9,3 +9,4 @@ RUN pip install requests
 EXPOSE 8888
 
 CMD [ "python3","publisher.py" ]
+

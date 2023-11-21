@@ -7,3 +7,4 @@ COPY . .
 EXPOSE 8888
 # Run the subscriber.py script when the container launches
 CMD [ "python3","subscriber.py"]
+
