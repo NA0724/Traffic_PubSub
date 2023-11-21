@@ -46,6 +46,7 @@ def subscriber(subscriber_name, topics, broker_addresses):
         last_heartbeat_time = time.time()
         while True:
             message = subscriber_socket.recv(1024).decode()
+            logger.info(f"\033[91m Message received from broker: {message}\033[0m")
             if message:
                 parts = message.split('*')
                 if parts[0] == "HEARTBEAT":
@@ -71,7 +72,7 @@ def subscriber(subscriber_name, topics, broker_addresses):
             # Check for heartbeat timeout
             if time.time() - last_heartbeat_time > heartbeat_timeout:
                 logger.error("Heartbeat missed. Reconnecting...")
-                time.sleep(10)
+                time.sleep(30)
                 subscriber_socket.close()
                 return subscriber(subscriber_name, topics, broker_addresses)
             
