@@ -1,4 +1,4 @@
 FROM python:3.11.5
-COPY . /subscriber01
-CMD [ "python3","/subscriber/subscriber.py" ]
-EXPOSE 8060
+WORKDIR /Traffic_PubSub/subscriber
+COPY subscriber.py /Traffic_PubSub/subscriber/
+CMD ["python", "./subscriber.py"]
