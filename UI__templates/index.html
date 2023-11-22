@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bay Area Traffic</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        body {
+            text-align: center;
+            background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlwrvFDh3P2Y9kdZcXl5zKp4mqDk3bHD3F_W3jbyI2BbbkE0WEM8ipEoOrlQ60V--vy34&usqp=CAU');
+            background-size: cover;
+        }
+
+        .container {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        .table-container {
+            display: none;
+            margin: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: auto;
+        }
+
+        th, td {
+            border: 1px solid rgb(241, 210, 9);
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <nav class="navbar navbar-light bg-light">
+        <span class="navbar-brand mb-0 h1">BayAreaTraffic</span>
+    </nav>
+
+    <div class="text-center">
+        <h1>BayAreaTraffic</h1>
+        <p>Subscribe to different cities in Bay Area and get the latest traffic updates.</p>
+        <main>
+            <section>
+                <div class="form-section">
+                    <h2>Subscribe Now!</h2>
+                    <form action="succeess.html">
+                        <label for="name">Name:</label>
+                        <input type="text" id="name" name="name" required>
+                        <fieldset>
+                          <legend>Cities</legend>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="Alameda" name="cities" value="Alameda" />
+                              Alameda
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="Contra Costa" name="cities" value="Contra Costa" />
+                              Contra Costa
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="Marin" name="cities" value="Marin" />
+                              Marin
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="San Francisco" name="cities" value="San Francisco" />
+                              San Francisco
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="San Mateo" name="cities" value="San Mateo" />
+                              San Mateo
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="San Benito" name="cities" value="San Benito" />
+                              San Benito
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="Santa Clara" name="cities" value="Santa Clara" />
+                              Santa Clara
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="Napa" name="cities" value="Napa" />
+                              Napa
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="Solano" name="cities" value="Solano" />
+                              Solano
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="Merced" name="cities" value="Merced" />
+                              Merced
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="Santa Cruz" name="cities" value="Santa Cruz" />
+                              Santa Cruz
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="San Joaquin" name="cities" value="San Joaquin" />
+                              San Joaquin
+                            </label>
+                          </div>
+                          <div>
+                            <label>
+                              <input type="checkbox" id="Stanislaus" name="cities" value="Stanislaus" />
+                              Stanislaus
+                            </label>
+                          </div>
+
+                          <div>
+                            <button type="submit">Subscribe Now!</button>
+                          </div>
+                        </fieldset>
+                    </form>
+                </section>
+            </main>
+        </div>
+        <!-- Footer -->
+        <footer class="bg-dark text-white p-3 mt-4">
+            <p>Your source for traffic updates.</p>
+            <p>&copy; 2023 Bay Area Traffic</p>
+        </footer>
+    </div>
+
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.9/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

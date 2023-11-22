@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        body {
+            text-align: center;
+            background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlwrvFDh3P2Y9kdZcXl5zKp4mqDk3bHD3F_W3jbyI2BbbkE0WEM8ipEoOrlQ60V--vy34&usqp=CAU');
+            background-size: cover;
+        }
+
+        .container {
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        .table-container {
+            display: none;
+            margin: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: auto;
+        }
+
+        th, td {
+            border: 1px solid rgb(241, 210, 9);
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+        <!-- Header -->
+        <nav class="navbar navbar-light bg-light">
+            <span class="navbar-brand mb-0 h1">BayAreaTraffic</span>
+        </nav>
+    <div class="container">
+        <header class="bg-primary text-white p-3">
+            <h1>Bay Area Traffic</h1>
+        </header>
+
+        <h1>Success!</h1>
+        <p>You have successfully Subscribed.</p>
+        <button name="Click to get latest traffic updates" onclick="showTable()" class="btn btn-info">Click to get latest traffic updates</button>
+
+
+    <div class="table-container">
+        <h2>Construction Event Details</h2>
+        <table>
+            <tr>
+                <th>Event ID (Primary Key)</th>
+                <th>Area</th>
+                <th>Event Type</th>
+                <th>Headline</th>
+                <th>Updated</th>
+            </tr>
+            <tr>
+                <td>511.org/1060527</td>
+                <td>Santa Clara</td>
+                <td>CONSTRUCTION</td>
+                <td>Caltrans : Long-term construction on CA-9 Eastbound at Sanborn Rd (Unincorporated). Lane closed. One way traffic control in effect. From 10:00 AM Monday, June 26, 2023 to 12:00 AM Monday, January 01, 2029.</td>
+                <td>2023-11-20T20:39Z</td>
+            </tr>
+            <tr>
+                <td>511.org/1098717</td>
+                <td>Santa Clara</td>
+                <td>CONSTRUCTION</td>
+                <td>Caltrans : Emergency road closure and Long-term construction on CA-35 Northbound and Southbound at Bear Creek Rd (Los Gatos). All lanes closed. Avoid the area. From 11:30 AM Monday, October 02, 2023 to 9:30 PM Sunday, December 10, 2023.</td>
+                <td>2023-11-20T20:41Z</td>
+            </tr>
+            <tr>
+                <td>511.org/1098718</td>
+                <td>Santa Clara</td>
+                <td>CONSTRUCTION</td>
+                <td>Caltrans : Emergency road closure and Long-term construction on CA-35 Northbound and Southbound at Bear Creek Rd (Los Gatos). All lanes closed. Avoid the area. From 11:30 AM Monday, October 02, 2023 to 9:30 PM Sunday, December 10, 2023.</td>
+                <td>2023-11-20T20:42Z</td>
+            </tr>
+            <tr>
+                <td>511.org/1103216</td>
+                <td>Santa Clara</td>
+                <td>CONSTRUCTION</td>
+                <td>Caltrans : Emergency construction on CA-35 Southbound at GIST Rd (Los Gatos). Lane closed. One way traffic control in effect. From 3:00 PM Monday, January 23, 2023 to 3:00 PM Friday, December 29, 2023.</td>
+                <td>2023-11-20T20:42Z</td>
+            </tr>
+            <tr>
+                <td>511.org/1103225</td>
+                <td>Alameda</td>
+                <td>CONSTRUCTION</td>
+                <td>Caltrans : Roadwork on I-680 Northbound exiting at Mission Blvd (Fremont). Off Ramp closed until 9 AM. From 7:00 PM Monday, July 31, 2023 to 9:00 AM Friday, December 29, 2023.</td>
+                <td>2023-11-21T07:11Z</td>
+            </tr>
+        </table>
+        
+    </div>
+    <footer class="bg-dark text-white p-3 mt-4">
+        <p>Your source for traffic updates.</p>
+        <p>&copy; 2023 Bay Area Traffic</p>
+    </footer>
+</div>
+
+    <script>
+        function showTable() {
+            document.querySelector('.table-container').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
