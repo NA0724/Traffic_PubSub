@@ -9,3 +9,4 @@ publisher/__pycache__/__init__.cpython-311.pyc
 publisher/__pycache__/publisher.cpython-311.pyc
 subscriber/__pycache__/__init__.cpython-311.pyc
 subscriber/__pycache__/subscriber.cpython-311.pyc
+.vscode
