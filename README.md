@@ -20,3 +20,7 @@
 
 ### Run publisher container
 `docker run -d --name publisher --network traffic_network publisher_image python3 ./publisher.py "broker1:8888" "broker2:8889" "broker3:8890"`
+
+
+### Run Flask container
+`docker run -d --name flask --network traffic_network trafficpubsub python3 ./app.py`

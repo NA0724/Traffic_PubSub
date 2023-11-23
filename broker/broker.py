@@ -293,11 +293,18 @@ class TrafficBroker:
 
     #gossip protocol
     def start_gossip_protocol(self):
+        info = "\033[33mNo active brokers in cluster_sockets. Gossip ended.\033[0m"
         while True:
             # Check if there are no active brokers in cluster_sockets
             if not self.cluster_sockets:
-                logger.info("\033[33mNo active brokers in cluster_sockets. Gossip ended.\033[0m")
-                break
+                logger.info(info)
+                info = "Continue sending heartbeat to all the subscribers..."
+                # Keep sending heartbeat
+                if self.is_leader:
+                    self.send_heartbeat_message()
+                time.sleep(3)
+                continue
+            
             # Choose a random broker from the cluster to gossip with
             random_broker = random.choice(list(self.cluster_sockets.keys()))
             logger.info(f"Starting gossip, {self.port} will gossip with: {random_broker}")
@@ -305,6 +312,7 @@ class TrafficBroker:
             self.send_gossip_message(random_broker)
             # Send heartbeat messages to all the subscribers
             if self.is_leader:
+                logger.info("Sending heartbeat to all the subscribers...")
                 self.send_heartbeat_message()
             # Introduce a delay before the next round of gossip
             time.sleep(3)  # Adjust the interval as needed
@@ -350,19 +358,18 @@ class TrafficBroker:
 
         # Update your local information about the sender
         self.update_last_gossip_time(sender_addr)
+        self.update_timestamp(sender_timestamp)
+        
         with self.subscriber_lock:
-            if sender_timestamp > self.lamport_timestamp:
-                # Check if the current broker is not the leader
-                if not self.is_leader:
-                    # Merge the topic subscriber addresses for non-leader nodes
-                    merged_subscribers = self.merge_subscribers(self.topic_subscribers_addresses, sender_subscribers)
-                    self.topic_subscribers_addresses = merged_subscribers
+            # Check if the current broker is not the leader
+            if not self.is_leader:
+                # Merge the topic subscriber addresses for non-leader nodes
+                merged_subscribers = self.merge_subscribers(self.topic_subscribers_addresses, sender_subscribers)
+                self.topic_subscribers_addresses = merged_subscribers
 
-                # Update cluster status
-                self.cluster_status[sender_addr] = details
-                logger.info(f"Updated cluster status from gossip: {sender_addr}")
-            else:
-                logger.info(f"Ignored older gossip data from: {sender_addr}")
+            # Update cluster status
+            self.cluster_status[sender_addr] = details
+            logger.info(f"Updated cluster status from gossip: {sender_addr}")
         
     
     def merge_subscribers(self, local_subscribers, remote_subscribers):
@@ -401,7 +408,7 @@ class TrafficBroker:
                     with self.timeout_lock:
                         del self.last_gossip_time[broker_addr]
                         
-            time.sleep(10)  # Check every 10 seconds
+            time.sleep(5)  # Check every 5 seconds
     
     def handle_broker_failure(self, addr):
         print(f"\033[31mBroker at {addr} is considered failed.\033[0m")

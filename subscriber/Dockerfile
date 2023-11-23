@@ -4,7 +4,8 @@ WORKDIR /Traffic_PubSub/subscriber
 
 # Copy the entire project into the container
 COPY . .
-EXPOSE 8888
+
+RUN pip install requests
 # Run the subscriber.py script when the container launches
 CMD [ "python3","subscriber.py"]
 

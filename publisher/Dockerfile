@@ -6,7 +6,6 @@ WORKDIR /Traffic_PubSub/publisher
 COPY . .
 
 RUN pip install requests
-EXPOSE 8888
-
+#RUN pip install -r requirements.txt
 CMD [ "python3","publisher.py" ]
 

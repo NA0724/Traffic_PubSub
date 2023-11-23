@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        body {
+            text-align: center;
+            background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlwrvFDh3P2Y9kdZcXl5zKp4mqDk3bHD3F_W3jbyI2BbbkE0WEM8ipEoOrlQ60V--vy34&usqp=CAU');
+            background-size: cover;
+        }
+
+        .container {
+            padding-top: 20px;
+            padding-bottom: 20px;
+            background-color: #f2f2f2;
+        }
+
+        .table-container {
+            display: none;
+            margin: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: auto;
+        }
+
+        th, td {
+            border: 1px solid rgb(241, 210, 9);
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+        <!-- Header -->
+    <nav class="navbar navbar-light bg-light">
+        <a class="navbar-brand mb-0 h1" href="/">BayAreaTraffic</a>
+    </nav>
+    <div class="container">
+        <a href="/" class="btn btn-info float-right">Back</a>
+        <header class="bg-primary text-white p-3">
+            <h1>Bay Area Traffic</h1>
+        </header>
+
+        <h1>Success!</h1>
+        <p>You have successfully Subscribed.</p>
+        <!-- Form for submitting hidden fields -->
+        <form id="hiddenFieldsForm" action="{{ url_for('publish_data', subscriber_name=subscriber_name) }}" method="POST" style="display: inline;">
+            <input type="hidden" name="subscriber_name" value="{{ subscriber_name }}">
+            <input type="hidden" name="selected_topics" value="{{ topics|join(',') }}">
+            <button type="submit" class="btn btn-info" >Click to get latest traffic updates</button>
+        </form>
+
+        <footer class="bg-dark text-white p-3 mt-4">
+            <p>Your source for traffic updates.</p>
+            <p>&copy; 2023 Bay Area Traffic</p>
+        </footer>
+    </div>
+    
+</body>
+</html>

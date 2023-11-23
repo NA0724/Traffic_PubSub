@@ -1,6 +1,13 @@
 version: '3.4'
 
 services:
+  flask_app:
+    build: ./flask_app
+    ports:
+      - "5000:5000"
+    networks:
+      - traffic_network
+
   broker1:
     image: broker_image
     #command: ["python3", "broker.py", "--port", "8888", "--cluster", "localhost:8889 localhost:8890"]
@@ -19,6 +26,16 @@ services:
     image: broker-image
     #command: ["python3", "broker.py", "--port", "8890", "--cluster", "localhost:8888 localhost:8888"]
     command: ["python3", "broker.py", "--port", "8890", "--cluster", "broker1:8888 broker2:8889"]
+    networks:
+      - traffic_network
+  
+  subscriber:
+    image: subscriber_image
+    networks:
+      - traffic_network
+  
+  publisher:
+    image: publisher_image
     networks:
       - traffic_network
 

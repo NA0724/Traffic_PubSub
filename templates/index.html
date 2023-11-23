@@ -1,130 +1,127 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Publish-Subscribe Broker System</title>
-<!-- Bootstrap CSS -->
-<link href="/workspaces/Traffic_PubSub/UI/static/style.css" rel="stylesheet"/>
-<style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bay Area Traffic</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
         body {
-            padding-top: 20px;
+            text-align: center;
+            background-image: url('{{ url_for('static', filename='images/background.jpg') }}');
+            background-size: cover;
+            color: black; /* Set text color to black */
         }
+
         .container {
-            max-width: 800px;
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+
+        .table-container {
+            margin: 100px;
+            background-color: white; /* Set table background color to white */
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        table {
+            width: 50%;
+            border-collapse: collapse;
+            margin: auto;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid rgb(241, 210, 9);
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .left-align {
+            text-align: left;
+        }
+
+        .checkbox-column {
+            text-align: left;
         }
     </style>
-<title>Publish Message</title><style>
-        .container {
-            max-width: 800px;
-            margin-top: 50px;
-        }
-    </style><title>Subscribe to Topic</title><style>
-        .container {
-            max-width: 800px;
-            margin-top: 50px;
-        }
-        #data-display {
-            margin-top: 20px;
-            border: 1px solid #ccc;
-            padding: 15px;
-            min-height: 100px;
-        }
-    </style><title>Broker Status</title></head>
+</head>
 <body>
-<div class="container">
-<h1 class="text-center">Publish-Subscribe Broker System</h1>
-<div class="row mt-4">
-<div class="col text-center">
-<a class="btn btn-primary" href="/publish">Publish a Message</a>
-<p class="mt-2">Publish new messages to the broker system.</p>
-</div>
-<div class="col text-center">
-<a class="btn btn-secondary" href="/subscribe">Subscribe to a Topic</a>
-<p class="mt-2">Subscribe to a topic and receive updates.</p>
-</div>
-<div class="col text-center">
-<a class="btn btn-info" href="/broker_status">View Broker Status</a>
-<p class="mt-2">Check the current status of the broker, including subscribers and messages.</p>
-</div>
-</div>
-</div>
-<div class="modal-overlay" id="modalOverlay">
-<div class="modal" id="customModal">
-<div class="modal-header">Confirm Action</div>
-<div class="modal-body">
-                Are you sure you want to perform this action?
-            </div>
-<div class="modal-footer">
-<button id="confirmBtn">Confirm</button>
-<button id="cancelBtn">Cancel</button>
-</div>
-</div>
-</div>
-<!-- Bootstrap JS and its dependencies -->
+    <!-- Header -->
+    <nav class="navbar navbar-light bg-light">
+        <span class="navbar-brand mb-0 h1">BayAreaTraffic</span>
+    </nav>
 
+    <div class="text-center">
+        <h1>BayAreaTraffic</h1>
+        <p>Subscribe to different cities in Bay Area and get the latest traffic updates.</p>
+        <main>
+            <section>
+                <div class="form-section">
+                    <h2>Subscribe Now!</h2>
+                    <form action="{{ url_for('subscribe') }}" method="POST">
+                      <div class="table-container">
+                          <table>
+                              <thead>
+                                  <tr>
+                                      <td colspan="3" class="left-align">
+                                          <label for="name">Name:</label>
+                                          <input type="text" id="name" name="name" required>
+                                      </td>
+                                  </tr>
+                              </thead>
+                              <tbody>
+                                  <tr>
+                                      <td colspan="3" class="left-align">
+                                          <label for="cities">Cities:</label>
+                                      </td>
+                                  </tr>
+                                  <tr>
+                                      <td class="checkbox-column">
+                                          {% for topic in topics[:topics|length//2] %}
+                                              <label>
+                                                  <input type="checkbox" id="{{ topic }}" name="topics" value="{{ topic }}" />
+                                                  {{ topic }}
+                                              </label><br>
+                                          {% endfor %}
+                                      </td>
+                                      <td class="checkbox-column">
+                                          {% for topic in topics[topics|length//2:] %}
+                                              <label>
+                                                  <input type="checkbox" id="{{ topic }}" name="topics" value="{{ topic }}" />
+                                                  {{ topic }}
+                                              </label><br>
+                                          {% endfor %}
+                                      </td>
+                                  </tr>
+                              </tbody>
+                          </table>
+                      </div>
+                  
+                      <div>
+                          <button type="submit">Subscribe Now!</button>
+                      </div>
+                  </form>
+                  
+                </div>
+            </section>
+        </main>
+    </div>
 
+    <!-- Footer -->
+    <footer class="bg-dark text-white p-3 mt-4">
+        <p>Your source for traffic updates.</p>
+        <p>&copy; 2023 Bay Area Traffic</p>
+    </footer>
 
-<div id="merged-content"><section id="publish"><body>
-<div class="container">
-<h2 class="mb-4">Publish a Message</h2>
-<form action="/publish" method="POST">
-<div class="form-group">
-<label for="message">Message</label>
-<textarea class="form-control" id="message" name="message" required="" rows="3"></textarea>
-</div>
-<button class="btn btn-primary" type="submit">Publish</button>
-<a class="btn btn-secondary" href="/">Back to Home</a>
-</form>
-<!-- Section for displaying published messages -->
-<div class="mt-5" id="published-messages">
-<h3>Published Messages:</h3>
-<div id="messages">
-<!-- Messages will be displayed here -->
-</div>
-</div>
-</div>
-<!-- Bootstrap JS and its dependencies -->
-
-
-
-</body></section><section id="subscribe"><body>
-<div class="container">
-<h2 class="mb-4">Subscribe to a Topic</h2>
-<form action="/subscribe" method="POST">
-<div class="form-group">
-<label for="topic">Topic Name</label>
-<input class="form-control" id="topic" name="topic" required="" type="text"/>
-</div>
-<button class="btn btn-primary" type="submit">Subscribe</button>
-<a class="btn btn-secondary" href="/">Back to Home</a>
-</form>
-<!-- Section to display subscribed data -->
-<div class="mt-4" id="data-display">
-<h4>Subscribed Data:</h4>
-<!-- Subscribed data will be displayed here -->
-</div>
-</div>
-<!-- Bootstrap JS and its dependencies -->
-
-
-
-</body></section><section id="broker_status"><body>
-<div class="container">
-<h2 class="mb-4">Broker Status</h2>
-<div class="status-info">
-<!-- Dynamic status information from Flask application -->
-<p><strong>Broker Status:</strong> {{ status.get('status', 'Unknown') }}</p>
-<p><strong>Number of Subscribers:</strong> {{ status.get('subscribers', 0) }}</p>
-<p><strong>Messages Published:</strong> {{ status.get('published_messages', 0) }}</p>
-<!-- Add more status details as needed -->
-</div>
-<a class="btn btn-secondary" href="/">Back to Home</a>
-</div>
-<!-- Bootstrap JS and its dependencies -->
-
-
-
-</body></section></div><script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script><script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script><script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script><script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script><script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script><script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script><script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script><script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script></body>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.9/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
 </html>

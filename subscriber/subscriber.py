@@ -3,6 +3,7 @@ import json
 import sys
 import time
 import logging
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -14,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 lamport_timestamp = 0
 heartbeat_timeout = 6
+
 def subscriber(subscriber_name, topics, broker_addresses):
     leader_address = None
     for broker_address in broker_addresses:
@@ -59,6 +61,7 @@ def subscriber(subscriber_name, topics, broker_addresses):
                     received_timestamp = int(parts[1])
                     lamport_timestamp = max(lamport_timestamp, received_timestamp) + 1
                     event_data = json.loads(received_data)
+                    send_data_to_flask(received_data)
                     if event_data["area"] in topics:
                         print(f"Subscriber {subscriber_name} received traffic event:")
                         print(f"Event ID: {event_data['event_id']}")
@@ -84,6 +87,15 @@ def subscriber(subscriber_name, topics, broker_addresses):
         logger.error(f"Subscriber {subscriber_name} is shutting down.")
     finally:
         subscriber_socket.close()
+
+def send_data_to_flask(data):
+    flask_url = 'http://127.0.0.1:5002/endpoint'  # Replace with your Flask app's URL and endpoint
+    headers = {'Content-Type': 'application/json'}
+    try:
+        response = requests.post(flask_url, json=data, headers=headers)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error sending data to Flask: {e}")
 
 
 def get_leader_address(broker_address):
