@@ -60,17 +60,8 @@ def subscriber(subscriber_name, topics, broker_addresses):
                     received_data = parts[0]
                     received_timestamp = int(parts[1])
                     lamport_timestamp = max(lamport_timestamp, received_timestamp) + 1
-                    event_data = json.loads(received_data)
                     send_data_to_flask(received_data)
-                    if event_data["area"] in topics:
-                        print(f"Subscriber {subscriber_name} received traffic event:")
-                        print(f"Event ID: {event_data['event_id']}")
-                        print(f"Area: \033[91m{event_data['area']}\033[0m")
-                        print(f"Event Type: {event_data['event_type']}")
-                        print(f"Headline: {event_data['headline']}")
-                        print(f"Updated: {event_data['updated']}")
-                        print(f"\033[32mLamport timestamp: {lamport_timestamp}\033[0m")
-                        print()
+                    logger.info(f"Received_data: {received_data}")
                 
             # Check for heartbeat timeout
             if time.time() - last_heartbeat_time > heartbeat_timeout:
@@ -89,9 +80,9 @@ def subscriber(subscriber_name, topics, broker_addresses):
         subscriber_socket.close()
 
 def send_data_to_flask(data):
-    flask_url = 'http://127.0.0.1:5002/endpoint'  # Replace with your Flask app's URL and endpoint
-    headers = {'Content-Type': 'application/json'}
-    try:
+    flask_url = 'http://flask:5002/subscriber_data'  # Replace with your Flask app's URL and endpoint
+    try:    
+        headers = {'Content-Type': 'application/json'}
         response = requests.post(flask_url, json=data, headers=headers)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:

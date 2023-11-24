@@ -63,41 +63,14 @@
                     <th>Headline</th>
                     <th>Updated</th>
                 </tr>
+                {% for event_data in event %}
                 <tr>
-                    
-                    <td>Santa Clara</td>
-                    <td>CONSTRUCTION</td>
-                    <td>Caltrans : Long-term construction on CA-9 Eastbound at Sanborn Rd (Unincorporated). Lane closed. One way traffic control in effect. From 10:00 AM Monday, June 26, 2023 to 12:00 AM Monday, January 01, 2029.</td>
-                    <td>2023-11-20T20:39Z</td>
+                    <td>{{ event_data['area'] }}</td>
+                    <td>{{ event_data['event_type'] }}</td>
+                    <td>{{ event_data['headline'] }}</td>
+                    <td>{{ event_data['updated'] }}</td>
                 </tr>
-                <tr>
-                    
-                    <td>Santa Clara</td>
-                    <td>CONSTRUCTION</td>
-                    <td>Caltrans : Emergency road closure and Long-term construction on CA-35 Northbound and Southbound at Bear Creek Rd (Los Gatos). All lanes closed. Avoid the area. From 11:30 AM Monday, October 02, 2023 to 9:30 PM Sunday, December 10, 2023.</td>
-                    <td>2023-11-20T20:41Z</td>
-                </tr>
-                <tr>
-                    
-                    <td>Santa Clara</td>
-                    <td>CONSTRUCTION</td>
-                    <td>Caltrans : Emergency road closure and Long-term construction on CA-35 Northbound and Southbound at Bear Creek Rd (Los Gatos). All lanes closed. Avoid the area. From 11:30 AM Monday, October 02, 2023 to 9:30 PM Sunday, December 10, 2023.</td>
-                    <td>2023-11-20T20:42Z</td>
-                </tr>
-                <tr>
-                    
-                    <td>Santa Clara</td>
-                    <td>CONSTRUCTION</td>
-                    <td>Caltrans : Emergency construction on CA-35 Southbound at GIST Rd (Los Gatos). Lane closed. One way traffic control in effect. From 3:00 PM Monday, January 23, 2023 to 3:00 PM Friday, December 29, 2023.</td>
-                    <td>2023-11-20T20:42Z</td>
-                </tr>
-                <tr>
-                    
-                    <td>Alameda</td>
-                    <td>CONSTRUCTION</td>
-                    <td>Caltrans : Roadwork on I-680 Northbound exiting at Mission Blvd (Fremont). Off Ramp closed until 9 AM. From 7:00 PM Monday, July 31, 2023 to 9:00 AM Friday, December 29, 2023.</td>
-                    <td>2023-11-21T07:11Z</td>
-                </tr>
+                {% endfor %}
             </table>
             
         </div>
