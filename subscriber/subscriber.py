@@ -36,7 +36,7 @@ def subscriber(subscriber_name, topics, broker_addresses):
     if not leader_address:
         logger.error("Failed to connect to any broker. Exiting.")
         return
-    
+    data_to_flask = []
     # Subscribe to each topic
     try:
         for topic in topics:
@@ -60,9 +60,9 @@ def subscriber(subscriber_name, topics, broker_addresses):
                     received_data = parts[0]
                     received_timestamp = int(parts[1])
                     lamport_timestamp = max(lamport_timestamp, received_timestamp) + 1
-                    send_data_to_flask(received_data)
+                    data_to_flask.append(received_data)
                     logger.info(f"Received_data: {received_data}")
-                
+               
             # Check for heartbeat timeout
             if time.time() - last_heartbeat_time > heartbeat_timeout:
                 logger.error("Heartbeat missed. Reconnecting...")
@@ -78,6 +78,7 @@ def subscriber(subscriber_name, topics, broker_addresses):
         logger.error(f"Subscriber {subscriber_name} is shutting down.")
     finally:
         subscriber_socket.close()
+        send_data_to_flask(data_to_flask) 
 
 def send_data_to_flask(data):
     flask_url = 'http://flask:5002/subscriber_data'  # Replace with your Flask app's URL and endpoint
@@ -85,6 +86,7 @@ def send_data_to_flask(data):
         headers = {'Content-Type': 'application/json'}
         response = requests.post(flask_url, json=data, headers=headers)
         response.raise_for_status()
+        logger.info(f"\033[92m Successfully send data to flask: {data}\033[0m")
     except requests.exceptions.RequestException as e:
         logger.error(f"Error sending data to Flask: {e}")
 

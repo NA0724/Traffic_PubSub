@@ -23,7 +23,7 @@
 
 
 ### Run Flask container
-`docker run -v /var/run/docker.sock:/var/run/docker.sock -d --name flask --network traffic_network -p 5002:5002 trafficpubsub python3 ./app.py`
+`docker run -v /var/run/docker.sock:/var/run/docker.sock -d --name flask --network traffic_network -p 5002:5002 flask python3 ./app.py`
 
 ### Start the application
 `docker-compose up -d`

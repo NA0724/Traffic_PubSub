@@ -39,9 +39,7 @@ def subscribe():
                         command="python3 ./subscriber.py broker1:8888 broker2:8889 broker3:8890 {}".format(' '.join(map(lambda x: '"{}"'.format(x), selected_topics))),
                         name="subscriber_{}".format(container_name),
                         network="traffic_network",
-                        detach=True
-                )   
-
+                        detach=True)
         return render_template('success.html', subscriber_name=subscriber_name, topics=selected_topics)
         # Additional code to manage or inspect the container
     except docker.errors.ContainerError as e:
@@ -68,7 +66,9 @@ def publish_data(subscriber_name):
                                       name=f"publisher_{container_name}",
                                       network="traffic_network",
                                       detach=True)
-        return render_template('subscriber_data.html', subscriber_name=subscriber_name)
+        event=subscriber_data()
+        logger.info(f"Data event: {event}")
+        return render_template('subscriber_data.html', subscriber_name=subscriber_name, event=event)
         # Additional code to manage or inspect the container
     except docker.errors.ContainerError as e:
         # Handle container errors
@@ -84,20 +84,20 @@ def publish_data(subscriber_name):
     
     return render_template('error.html')
 
-@app.route('/subscriber_data', methods=['POST'])
+@app.route('/subscriber_data', methods=['GET','POST'])
 def subscriber_data():
     try:
         # Assuming the incoming data is a dictionary
-        data = request.get_json()
-
+        data = request.json
+        jsonify(data)
         # Process the data as needed
         # For now, just print it to the console
-        print('Received data:', data)
-        return data
+        logger.info(f'Received data: {data}')
+        
 
     except Exception as e:
         # Handle any exceptions that might occur during data processing
-        print(f"Error processing data: {e}")
+        logger.exception(f"Error processing data: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
