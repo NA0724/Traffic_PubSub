@@ -36,7 +36,10 @@ def subscriber(subscriber_name, topics, broker_addresses):
     if not leader_address:
         logger.error("Failed to connect to any broker. Exiting.")
         return
-    data_to_flask = []
+
+    last_send_time = time.time()
+    send_interval = 5
+    sent = False
     # Subscribe to each topic
     try:
         for topic in topics:
@@ -64,7 +67,12 @@ def subscriber(subscriber_name, topics, broker_addresses):
                     event_sub_data[ip_address].append(received_data)
                     received_timestamp = int(parts[1])
                     lamport_timestamp = max(lamport_timestamp, received_timestamp) + 1
+                # Check if it's time to send data to Flask
+                if not sent and time.time() - last_send_time > send_interval:
                     send_data_to_flask(event_sub_data)
+                    sent = True
+                    event_sub_data.clear()  # Clear the data after sending
+                    last_send_time = time.time()
             # Check for heartbeat timeout
             if time.time() - last_heartbeat_time > heartbeat_timeout:
                 logger.error("Heartbeat missed. Reconnecting...")

@@ -19,12 +19,13 @@ app = Flask(__name__)
 topics = ["Alameda", "Contra Costa", "Marin", "San Francisco", "San Mateo", "San Benito", "Santa Clara", "Napa",
           "Solano", "Sonoma", "Merced", "Santa Cruz", "San Joaquin", "Stanislaus"]
 client = docker.from_env()
-# Use a queue to store received data in a thread-safe manner
-data_queue = queue.Queue()
-subscribed_events = {}
+# # Use a queue to store received data in a thread-safe manner
+# data_queue = queue.Queue()
+# subscribed_events = {}
 
-current_subscriber = ''
-
+#current_subscriber = ''
+subscribers = {}
+events = []
 # Render the home page
 @app.route('/')
 def homepage():
@@ -34,7 +35,7 @@ def homepage():
 # Subscriber method gets the subscriber name and topics selected from frontend and runs the subscriber container with those details
 @app.route('/subscribe', methods=['GET', 'POST'])
 def subscribe():
-    global current_subscriber 
+    #global current_subscriber 
     selected_topics = request.form.getlist('topics')
     subscriber_name = request.form.get('name')
     container_name = ''.join(subscriber_name.split())
@@ -52,8 +53,19 @@ def subscribe():
         container_instance = client.containers.get(container_id)
         # Get the bridge network information
         bridge_network_info = container_instance.attrs['NetworkSettings']['Networks']['traffic_network']
-        # Extract the IP address
-        current_subscriber = bridge_network_info['IPAddress']
+        # Update the subscribers dictionary
+        subscribers[subscriber_name] = {
+            'container_name': container_name,
+            'ip_address': bridge_network_info['IPAddress'],
+            'topics': selected_topics,
+        }
+        
+        publisher_container = client.containers.run("publisher_image", 
+                                      command="python3 ./publisher.py broker1:8888 broker2:8889 broker3:8890 " ,
+                                      name=f"publisher_{container_name}",
+                                      network="traffic_network",
+                                      detach=True)
+        
         return render_template('success.html', subscriber_name=subscriber_name, topics=selected_topics)
         # Additional code to manage or inspect the container
     except docker.errors.ContainerError as e:
@@ -72,19 +84,24 @@ def subscribe():
 
 @app.route('/publish-data/<subscriber_name>', methods=['POST'])
 def publish_data(subscriber_name):
-    container_name = ''.join(subscriber_name.split())
+    # container_name = ''.join(subscriber_name.split())
     
     try:
-        container = client.containers.run("publisher_image", 
-                                      command="python3 ./publisher.py broker1:8888 broker2:8889 broker3:8890 " ,
-                                      name=f"publisher_{container_name}",
-                                      network="traffic_network",
-                                      detach=True)
-        logger.info(f"Is subscriber events empty?: {not bool(subscribed_events)}")
-        logger.info(f"{subscribed_events[current_subscriber]}")
-        event = list(data_queue.queue)
-        logger.info(f"Data event: {event}")
-        return render_template('subscriber_data.html', subscriber_name=subscriber_name, event=event)
+    #     container = client.containers.run("publisher_image", 
+    #                                   command="python3 ./publisher.py broker1:8888 broker2:8889 broker3:8890 " ,
+    #                                   name=f"publisher_{container_name}",
+    #                                   network="traffic_network",
+    #                                   detach=True)
+        #logger.info(f"Is subscriber events empty?: {not bool(subscribed_events)}")
+        #logger.info(f"{subscribed_events[current_subscriber]}")
+        if subscriber_name in subscribers:
+            logger.info(f"Events for {subscriber_name}: {subscribers[subscriber_name]}")
+            # event = list(data_queue.queue)
+            logger.info(f"Data event: {events}")
+            return render_template('subscriber_data.html', subscriber_name=subscriber_name, event=events)
+        else:
+            logger.warning(f"No events found for subscriber {subscriber_name}")
+            return jsonify({'status': 'error', 'message': 'No events found'}), 404
         # Additional code to manage or inspect the container
     except docker.errors.ContainerError as e:
         # Handle container errors
@@ -105,12 +122,22 @@ def subscriber_data():
     try:
         # Assuming the incoming data is a dictionary
         data = request.json
-        if current_subscriber in data:
-            process_data(data)
-            return jsonify(data), 200
-        else:
-            logger.warning(f"Key '{current_subscriber}' not found in data.")
-            return jsonify({'status': 'error', 'message': 'Key not found in data'}),404
+        logger.info(f"Incoming data: {data}")
+        
+        for ip_address, events in data.items():
+            # Find the matching subscriber for the given IP address
+            matching_subscriber = None
+            for subscriber_name, details in subscribers.items():
+                if details['ip_address'] == ip_address:
+                    matching_subscriber = subscriber_name
+                    break
+            
+            if matching_subscriber:
+                process_data(events)
+            else:
+                logger.warning(f"No matching subscriber found for IP {ip_address}")
+
+        return jsonify({'status': 'success', 'data': data}), 200
 
     except Exception as e:
         # Handle any exceptions that might occur during data processing
@@ -118,10 +145,8 @@ def subscriber_data():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 def process_data(data):
-    global subscribed_events
-    data_queue.put(data[current_subscriber])
-    subscribed_events = dict(data)
-    logger.info(f"Data is copied successfully: {not bool(subscribed_events)}")
+    global events
+    events = data
 
 
 if __name__ == "__main__":
