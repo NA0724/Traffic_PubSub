@@ -122,6 +122,7 @@ class TrafficBroker:
             self.update_timestamp(received_timestamp)
             
             if topic in self.topic_subscribers:
+                logger.info(f"Topic_Subscribers:{self.topic_subscribers}")
                 disconnected_subscribers = []
                 disconnected_addresses = []
                 for subscriber in self.topic_subscribers[topic]:

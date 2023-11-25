@@ -12,7 +12,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
-
+event_sub_data={}
 lamport_timestamp = 0
 heartbeat_timeout = 6
 
@@ -25,7 +25,7 @@ def subscriber(subscriber_name, topics, broker_addresses):
             leader_address = get_leader_address(broker_address)
             if leader_address:
                 subscriber_socket.connect(leader_address)
-                logger.info(f"Connected to broker: {leader_address}")
+                logger.info(f"{subscriber_socket.getsockname()} Connected to broker: {leader_address}")
                 break
             else:
                 logger.error(f"Failed to get leader address from broker: {broker_address}")
@@ -58,11 +58,13 @@ def subscriber(subscriber_name, topics, broker_addresses):
                     lamport_timestamp = max(lamport_timestamp, received_timestamp) + 1
                 else:
                     received_data = parts[0]
+                    ip_address = subscriber_socket.getsockname()[0]
+                    if ip_address not in event_sub_data:
+                        event_sub_data[ip_address] = []
+                    event_sub_data[ip_address].append(received_data)
                     received_timestamp = int(parts[1])
                     lamport_timestamp = max(lamport_timestamp, received_timestamp) + 1
-                    data_to_flask.append(received_data)
-                    logger.info(f"Received_data: {received_data}")
-               
+                    send_data_to_flask(event_sub_data)
             # Check for heartbeat timeout
             if time.time() - last_heartbeat_time > heartbeat_timeout:
                 logger.error("Heartbeat missed. Reconnecting...")
@@ -78,7 +80,7 @@ def subscriber(subscriber_name, topics, broker_addresses):
         logger.error(f"Subscriber {subscriber_name} is shutting down.")
     finally:
         subscriber_socket.close()
-        send_data_to_flask(data_to_flask) 
+         
 
 def send_data_to_flask(data):
     flask_url = 'http://flask:5002/subscriber_data'  # Replace with your Flask app's URL and endpoint
@@ -86,7 +88,7 @@ def send_data_to_flask(data):
         headers = {'Content-Type': 'application/json'}
         response = requests.post(flask_url, json=data, headers=headers)
         response.raise_for_status()
-        logger.info(f"\033[92m Successfully send data to flask: {data}\033[0m")
+        logger.info(f"\033[92m Successfully send data to flask \033[0m")
     except requests.exceptions.RequestException as e:
         logger.error(f"Error sending data to Flask: {e}")
 

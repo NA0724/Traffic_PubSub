@@ -1,9 +1,10 @@
 import json
 from flask import Flask, abort, jsonify, render_template, redirect, request, session
 import time
-import subprocess
+import queue
 import logging
 import docker
+import copy
 
 # Configure logging
 logging.basicConfig(
@@ -18,7 +19,11 @@ app = Flask(__name__)
 topics = ["Alameda", "Contra Costa", "Marin", "San Francisco", "San Mateo", "San Benito", "Santa Clara", "Napa",
           "Solano", "Sonoma", "Merced", "Santa Cruz", "San Joaquin", "Stanislaus"]
 client = docker.from_env()
+# Use a queue to store received data in a thread-safe manner
+data_queue = queue.Queue()
+subscribed_events = {}
 
+current_subscriber = ''
 
 # Render the home page
 @app.route('/')
@@ -29,6 +34,7 @@ def homepage():
 # Subscriber method gets the subscriber name and topics selected from frontend and runs the subscriber container with those details
 @app.route('/subscribe', methods=['GET', 'POST'])
 def subscribe():
+    global current_subscriber 
     selected_topics = request.form.getlist('topics')
     subscriber_name = request.form.get('name')
     container_name = ''.join(subscriber_name.split())
@@ -40,6 +46,14 @@ def subscribe():
                         name="subscriber_{}".format(container_name),
                         network="traffic_network",
                         detach=True)
+        # Get details about the container by ID or name
+        container_id = container.id
+        # Use the container ID to get the container instance
+        container_instance = client.containers.get(container_id)
+        # Get the bridge network information
+        bridge_network_info = container_instance.attrs['NetworkSettings']['Networks']['traffic_network']
+        # Extract the IP address
+        current_subscriber = bridge_network_info['IPAddress']
         return render_template('success.html', subscriber_name=subscriber_name, topics=selected_topics)
         # Additional code to manage or inspect the container
     except docker.errors.ContainerError as e:
@@ -66,7 +80,9 @@ def publish_data(subscriber_name):
                                       name=f"publisher_{container_name}",
                                       network="traffic_network",
                                       detach=True)
-        event=subscriber_data()
+        logger.info(f"Is subscriber events empty?: {not bool(subscribed_events)}")
+        logger.info(f"{subscribed_events[current_subscriber]}")
+        event = list(data_queue.queue)
         logger.info(f"Data event: {event}")
         return render_template('subscriber_data.html', subscriber_name=subscriber_name, event=event)
         # Additional code to manage or inspect the container
@@ -89,17 +105,23 @@ def subscriber_data():
     try:
         # Assuming the incoming data is a dictionary
         data = request.json
-        jsonify(data)
-        # Process the data as needed
-        # For now, just print it to the console
-        logger.info(f'Received data: {data}')
-        
+        if current_subscriber in data:
+            process_data(data)
+            return jsonify(data), 200
+        else:
+            logger.warning(f"Key '{current_subscriber}' not found in data.")
+            return jsonify({'status': 'error', 'message': 'Key not found in data'}),404
 
     except Exception as e:
         # Handle any exceptions that might occur during data processing
         logger.exception(f"Error processing data: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+def process_data(data):
+    global subscribed_events
+    data_queue.put(data[current_subscriber])
+    subscribed_events = dict(data)
+    logger.info(f"Data is copied successfully: {not bool(subscribed_events)}")
 
 
 if __name__ == "__main__":
