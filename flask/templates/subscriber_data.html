@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Success</title>
+    <title>Traffic Events Updates</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
     <style>
         body {
             text-align: center;
-            background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlwrvFDh3P2Y9kdZcXl5zKp4mqDk3bHD3F_W3jbyI2BbbkE0WEM8ipEoOrlQ60V--vy34&usqp=CAU');
+            background-image: url('{{ url_for('static', filename='images/traffic1.jpg') }}');
             background-size: cover;
+            color: black; /* Set text color to black */
         }
 
         .container {
@@ -19,7 +20,7 @@
         }
 
         .table-container {
-            margin: 100px;
+            margin: 50px;
             background-color: white; /* Set table background color to white */
             padding: 20px;
             border-radius: 10px;
@@ -41,44 +42,54 @@
         th {
             background-color: #f2f2f2;
         }
+        .error-message {
+            color: red;
+        }
     </style>
 </head>
 <body>
         <!-- Header -->
-        <nav class="navbar navbar-light bg-light">
+        <nav class="navbar navbar-dark bg-dark">
             <a class="navbar-brand mb-0 h1" href="/">BayAreaTraffic</a>
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Home</a>
+                </li>
+            </ul>
         </nav>
+        
     <div class="container">
-        <a href="/" class="btn btn-info float-right">Back</a>
-        <header class="bg-primary text-white p-3">
-            <h1>Bay Area Traffic</h1>
+        <header class="bg-secondary text-white p-3">
+            <h1>Displaying Traffic Updates for Subscriber: {{ subscriber_name }}</h1>
         </header>
         <div class="table-container">
-            <h2>Displaying Traffic Updates for Subscriber</h2>
-            <table>
-                <tr>
-                    
-                    <th>Area</th>
-                    <th>Event Type</th>
-                    <th>Headline</th>
-                    <th>Updated</th>
-                </tr>
-                {% for event_data in event %}
-                <tr>
-                    <td>{{ event_data['area'] }}</td>
-                    <td>{{ event_data['event_type'] }}</td>
-                    <td>{{ event_data['headline'] }}</td>
-                    <td>{{ event_data['updated'] }}</td>
-                </tr>
-                {% endfor %}
-            </table>
+            {% if event %}
+                <table>
+                    <tr>
+                        <th>Area</th>
+                        <th>Event Type</th>
+                        <th>Headline</th>
+                        <th>Updated</th>
+                    </tr>
+                        {% for event_data in event %}
+                        {% set event_dict = event_data | json_parse %}
+                            <tr>
+                                <td>{{ event_dict['area'] }}</td>
+                                <td>{{ event_dict['event_type'] }}</td>
+                                <td>{{ event_dict['headline'] }}</td>
+                                <td>{{ event_dict['updated'] }}</td>
+                            </tr>
+                        {% endfor %}
+                </table>
+            {% else %}
+                <p class="error-message">No events available for the areas selected. Choose another city or try again.</p>
+            {% endif %}
             
         </div>
-        
-<footer class="bg-dark text-white p-3 mt-4">
+</div>
+<footer class="bg-dark text-white p-1 mt-4">
     <p>Your source for traffic updates.</p>
     <p>&copy; 2023 Bay Area Traffic</p>
 </footer>
-</div>
 </body>
 </html>

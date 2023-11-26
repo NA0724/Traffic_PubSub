@@ -100,7 +100,7 @@ def send_data_to_flask(data):
     except requests.exceptions.RequestException as e:
         logger.error(f"Error sending data to Flask: {e}")
 
-
+# Get elected broker and connect the subscriber to the leader
 def get_leader_address(broker_address):
     try:
         global lamport_timestamp

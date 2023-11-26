@@ -8,8 +8,9 @@
     <style>
         body {
             text-align: center;
-            background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlwrvFDh3P2Y9kdZcXl5zKp4mqDk3bHD3F_W3jbyI2BbbkE0WEM8ipEoOrlQ60V--vy34&usqp=CAU');
+            background-image: url('{{ url_for('static', filename='images/traffic1.jpg') }}');
             background-size: cover;
+            color: white;  /* Set text color to black */
         }
 
         .container {
@@ -39,33 +40,39 @@
         th {
             background-color: #f2f2f2;
         }
+        .success-container {
+            color: green;
+        }
     </style>
 </head>
 <body>
         <!-- Header -->
-    <nav class="navbar navbar-light bg-light">
-        <a class="navbar-brand mb-0 h1" href="/">BayAreaTraffic</a>
-    </nav>
+        <nav class="navbar navbar-dark bg-dark">
+            <a class="navbar-brand mb-0 h1" href="/">BayAreaTraffic</a>
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Home</a>
+                </li>
+            </ul>
+        </nav>
+        
     <div class="container">
-        <a href="/" class="btn btn-info float-right">Back</a>
-        <header class="bg-primary text-white p-3">
-            <h1>Bay Area Traffic</h1>
-        </header>
-
-        <h1>Success!</h1>
-        <p>You have successfully Subscribed.</p>
-        <!-- Form for submitting hidden fields -->
-        <form id="hiddenFieldsForm" action="{{ url_for('publish_data', subscriber_name=subscriber_name) }}" method="POST" style="display: inline;">
-            <input type="hidden" name="subscriber_name" value="{{ subscriber_name }}">
-            <input type="hidden" name="selected_topics" value="{{ topics|join(',') }}">
-            <button type="submit" class="btn btn-info" >Click to get latest traffic updates</button>
-        </form>
-
-        <footer class="bg-dark text-white p-3 mt-4">
-            <p>Your source for traffic updates.</p>
-            <p>&copy; 2023 Bay Area Traffic</p>
-        </footer>
+        <div class="success-container">
+            <h1>Success!</h1>
+            <p>You have successfully Subscribed.</p>
+        </div>
+        <div class="view-events">
+            <!-- Form for submitting hidden fields -->
+            <form id="hiddenFieldsForm" action="{{ url_for('publish_data', subscriber_name=subscriber_name) }}" method="POST" style="display: inline;">
+                <input type="hidden" name="subscriber_name" value="{{ subscriber_name }}">
+                <input type="hidden" name="selected_topics" value="{{ topics|join(',') }}">
+                <button type="submit" class="btn btn-info" >Click to get latest traffic updates</button>
+            </form>
+        </div>
     </div>
-    
+    <footer class="bg-dark text-white p-1 mt-4">
+        <p>Your source for traffic updates.</p>
+        <p>&copy; 2023 Bay Area Traffic</p>
+    </footer>
 </body>
 </html>

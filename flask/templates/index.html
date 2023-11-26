@@ -8,9 +8,9 @@
     <style>
         body {
             text-align: center;
-            background-image: url('{{ url_for('static', filename='images/background.jpg') }}');
+            background-image: url('{{ url_for('static', filename='images/traffic1.jpg') }}');
             background-size: cover;
-            color: black; /* Set text color to black */
+            color: white;  /* Set text color to black */
         }
 
         .container {
@@ -19,17 +19,18 @@
         }
 
         .table-container {
-            margin: 100px;
-            background-color: white; /* Set table background color to white */
+            margin: 50px;
+            background-color: #d8dadd; /* Set table background color to white */
             padding: 20px;
             border-radius: 10px;
+            color: black;
         }
+        
 
         table {
-            width: 50%;
+            width: 80%;
             border-collapse: collapse;
             margin: auto;
-            margin-top: 20px;
         }
 
         th, td {
@@ -50,78 +51,126 @@
         .checkbox-column {
             text-align: left;
         }
+        .btn-subscribe {
+            margin-top: 20px; /* Add margin to the top of the button */
+        }
+        .welcome-container {
+            text-align: center;
+            margin: 50px 0;
+        }
+        
+        .welcome-heading {
+            font-size: 2.5em;
+            color: #007BFF; /* Use a friendly blue color */
+        }
+        
+        .welcome-text {
+            font-size: 1.2em;
+            color: #343A40; /* Use a dark gray color for the text */
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        
     </style>
 </head>
 <body>
     <!-- Header -->
-    <nav class="navbar navbar-light bg-light">
-        <span class="navbar-brand mb-0 h1">BayAreaTraffic</span>
+    <nav class="navbar navbar-dark bg-dark">
+        <a class="navbar-brand mb-0 h1" href="/">BayAreaTraffic</a>
     </nav>
-
-    <div class="text-center">
-        <h1>BayAreaTraffic</h1>
-        <p>Subscribe to different cities in Bay Area and get the latest traffic updates.</p>
-        <main>
-            <section>
-                <div class="form-section">
-                    <h2>Subscribe Now!</h2>
-                    <form action="{{ url_for('subscribe') }}" method="POST">
-                      <div class="table-container">
-                          <table>
-                              <thead>
-                                  <tr>
-                                      <td colspan="3" class="left-align">
-                                          <label for="name">Name:</label>
-                                          <input type="text" id="name" name="name" required>
-                                      </td>
-                                  </tr>
-                              </thead>
-                              <tbody>
-                                  <tr>
-                                      <td colspan="3" class="left-align">
-                                          <label for="cities">Cities:</label>
-                                      </td>
-                                  </tr>
-                                  <tr>
-                                      <td class="checkbox-column">
-                                          {% for topic in topics[:topics|length//2] %}
-                                              <label>
-                                                  <input type="checkbox" id="{{ topic }}" name="topics" value="{{ topic }}" />
-                                                  {{ topic }}
-                                              </label><br>
-                                          {% endfor %}
-                                      </td>
-                                      <td class="checkbox-column">
-                                          {% for topic in topics[topics|length//2:] %}
-                                              <label>
-                                                  <input type="checkbox" id="{{ topic }}" name="topics" value="{{ topic }}" />
-                                                  {{ topic }}
-                                              </label><br>
-                                          {% endfor %}
-                                      </td>
-                                  </tr>
-                              </tbody>
-                          </table>
-                      </div>
-                  
-                      <div>
-                          <button type="submit">Subscribe Now!</button>
-                      </div>
-                  </form>
-                  
+    <div class="container">
+    <div class="table-container">
+        <div class="row">
+            <div class="col-md-6">
+                
+                <div class="welcome-container">
+                    <h1 class="welcome-heading">Welcome to BayAreaTraffic!</h1>
+                    <p class="welcome-text">Subscribe to stay informed about traffic updates in the Bay Area. Get the latest information on road closures, construction events, and other traffic-related news for your chosen cities.</p>
                 </div>
-            </section>
-        </main>
-    </div>
+                
+            </div>
+            <div class="col-md-6">
+                
+                    <h3>Subscribe Now!</h3>
+                    <form action="{{ url_for('subscribe') }}" method="POST" onsubmit="return validateForm()">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <td colspan="3" class="left-align">
+                                        <label for="name"><strong>Subscriber Name:</strong></label>
+                                        <input type="text" id="name" name="name" required>
+                                    </td>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="left-align" colspan="3">
+                                        <div class="form-row align-items-top">
+                                            <div class="col-auto">
+                                                <label for="cities"><strong>Select Cities:</strong></label>
+                                            </div>
+                                            <div class="col-auto">
+                                                <div class="checkbox-column">
+                                                    {% for topic in topics[:topics|length//2] %}
+                                                        <label>
+                                                            <input type="checkbox" id="{{ topic }}" name="topics" value="{{ topic }}" />
+                                                            {{ topic }}
+                                                        </label><br>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            <div class="col-auto">
+                                                <div class="checkbox-column">
+                                                    {% for topic in topics[topics|length//2:] %}
+                                                        <label>
+                                                            <input type="checkbox" id="{{ topic }}" name="topics" value="{{ topic }}" />
+                                                            {{ topic }}
+                                                        </label><br>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <button class="btn btn-dark btn-subscribe" type="submit">Subscribe</button>
+                    </form>
+                
+            </div>
+        </div>
+    </div>   
+</div>           
+            
 
     <!-- Footer -->
-    <footer class="bg-dark text-white p-3 mt-4">
+    <footer class="bg-dark text-white p-1 mt-4">
         <p>Your source for traffic updates.</p>
         <p>&copy; 2023 Bay Area Traffic</p>
     </footer>
-
+    <script>
+        function validateForm() {
+            var name = document.getElementById('name').value;
+            var cities = document.querySelectorAll('input[name="topics"]:checked');
+    
+            if (name.trim() === '') {
+                alert('Please enter Subscriber Name.');
+                return false;
+            }
+    
+            if (cities.length === 0) {
+                alert('Please select at least one city.');
+                return false;
+            }
+    
+            return true;
+        }
+        
+    </script>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.0.9/dist/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+
 </body>
 </html>

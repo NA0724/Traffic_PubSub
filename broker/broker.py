@@ -47,19 +47,19 @@ class TrafficBroker:
 
         logger.info(f"Broker listening on {host}:{port}")
 
-
+    
+    # Sets up cluster of brokers conneced to each other
     def setup_cluster(self):
         # Connect to other brokers in the cluster
         for addr in self.cluster_address:
             self.connect_to_cluster_node(addr)
-        # start election after cluster is formed
+        # LEADER ELECTION ALGORITHM: start election after cluster is formed
         self.start_election_thread()
         time.sleep(1)
-        # Start a thread for gossip protocol
+        # GOSSIP PROTOCOL ALGORITHM: Start a thread for gossip protocol
         self.increment_timestamp()
         gossip_thread = threading.Thread(target=self.start_gossip_protocol)
         gossip_thread.start()
-        
         # Start a thread for gossip timeout
         timeout_check_thread = threading.Thread(target=self.check_gossip_timeouts)
         timeout_check_thread.start()
@@ -79,7 +79,7 @@ class TrafficBroker:
                     logger.warning(f"Retry {attempt + 1}/{retry_count} connecting to {addr}")
                     time.sleep(retry_delay)
                 else:
-                    logger.error(f"\nError connecting to cluster node at {addr}: {e}")
+                    logger.error(f"\n \033[31m Error connecting to cluster node at {addr}: {e} \033[0m")
 
 
     def handle_client(self, client_socket):
@@ -95,12 +95,13 @@ class TrafficBroker:
                     self.process_message(message, client_socket)
         client_socket.close()
         
-        
+    # Processes different types of messages received by the broker based on the command {'PUBLISH', 'SUBSCRIBE', 'ELECTION', 'VICTORY', 'ELECTION_ACK', 'VICTORY' }
     def process_message(self, message, client_socket):
         logger.info(f"Got message: {message}")
         #Process individual message
         parts = message.split("*")
         command = parts[0]
+        
         if command == "SUBSCRIBE":
             topic = parts[1]
             received_timestamp = int(parts[2])
@@ -115,6 +116,7 @@ class TrafficBroker:
                 if topic not in self.topic_subscribers_addresses:
                     self.topic_subscribers_addresses[topic] = []
                 self.topic_subscribers_addresses[topic].append(address_str)
+        
         elif command == "PUBLISH":
             topic = parts[1]
             data = parts[2]
@@ -122,7 +124,6 @@ class TrafficBroker:
             self.update_timestamp(received_timestamp)
             
             if topic in self.topic_subscribers:
-                logger.info(f"Topic_Subscribers:{self.topic_subscribers}")
                 disconnected_subscribers = []
                 disconnected_addresses = []
                 for subscriber in self.topic_subscribers[topic]:
@@ -144,9 +145,6 @@ class TrafficBroker:
                             self.topic_subscribers_addresses[topic].remove(address)
 
         elif command == "ELECTION":
-            # if self.is_leader:
-            #     logger.info(f"{self.port} ignoring election message as it's already the leader or election has ended.")
-            #     return
             sender_addr_str = parts[1]  # Assuming the sender's address is part of the message
             received_timestamp = int(parts[2])
             self.update_timestamp(received_timestamp)
@@ -156,6 +154,7 @@ class TrafficBroker:
             self.respond_to_election(sender_addr)
             if not self.election_in_progress:
                 self.start_election()
+        
         elif command == "VICTORY":
             # A broker has announced it is the new leader
             sender_addr_str = parts[1]
@@ -167,6 +166,7 @@ class TrafficBroker:
                 self.is_leader = (self.current_leader == (self.host, self.port))
                 self.election_in_progress = False
                 logger.info(f"\033[34mElection ended. Current leader is {self.current_leader}\033[0m")
+        
         elif command == "ELECTION_ACK":
             sender_addr = parts[1]
             received_timestamp = int(parts[2])
@@ -178,6 +178,7 @@ class TrafficBroker:
             with self.election_lock:
                 self.election_in_progress = False
                 self.is_leader = False
+       
         elif command == "GOSSIP":
             # Process the incoming gossip message
             details = json.loads(parts[1])
@@ -195,7 +196,7 @@ class TrafficBroker:
             client_handler.start()
 
 
-    # Leader election
+    # Leader election Algorithm implementation
     def start_election(self):
         if self.election_in_progress or self.is_leader:
             logger.warning(f"\nElection already in progress on {self.port}")
@@ -292,7 +293,7 @@ class TrafficBroker:
         client_socket.send(leader_address.encode())
 
 
-    #gossip protocol
+    # gossip protocol algorithm implementation
     def start_gossip_protocol(self):
         info = "\033[33mNo active brokers in cluster_sockets. Gossip ended.\033[0m"
         while True:
@@ -330,7 +331,7 @@ class TrafficBroker:
             logger.error(f"Error sending gossip message to {addr}: {e}")
             self.handle_broker_failure(addr)
 
-
+    # Heartbeat Mechanism
     def send_heartbeat_message(self):
         # Extract unique subscriber socket objects
         unique_subscriber_sockets = set()
@@ -373,8 +374,8 @@ class TrafficBroker:
             logger.info(f"Updated cluster status from gossip: {sender_addr}")
         
     
+    # Merge local and remote subscribers, ensuring no duplicates.
     def merge_subscribers(self, local_subscribers, remote_subscribers):
-        """Merge local and remote subscribers, ensuring no duplicates."""
         merged_subscribers = {}
         for topic in set(local_subscribers.keys()).union(remote_subscribers.keys()):
             local_subs = set(local_subscribers.get(topic, []))
@@ -411,6 +412,7 @@ class TrafficBroker:
                         
             time.sleep(5)  # Check every 5 seconds
     
+    # Broker Failure Handling Mechanism: If any broker fails, restart election among the active brokers to chose a new leader
     def handle_broker_failure(self, addr):
         print(f"\033[31mBroker at {addr} is considered failed.\033[0m")
         with self.subscriber_lock:
@@ -427,6 +429,7 @@ class TrafficBroker:
                 self.start_election_thread()
 
 
+    # Lamport Timestamp 
     def increment_timestamp(self):
         with self.timestamp_lock:
             self.lamport_timestamp += 1
@@ -453,16 +456,12 @@ if __name__ == "__main__":
     for addr in args.cluster:
         host, port = addr.split(":")
         cluster_addresses.append((host, int(port)))
-
     broker = TrafficBroker(args.host, args.port, cluster_addresses)
     # Run the broker server loop in a separate thread
     broker_thread = threading.Thread(target=broker.run)
     broker_thread.start()
-
     # Optionally, add a small delay to ensure the server is fully up
     time.sleep(1)
-    
-
     # Keep the main thread alive or join the broker thread if you need to
     broker_thread.join()
     
