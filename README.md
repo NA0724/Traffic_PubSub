@@ -6,8 +6,8 @@ This project implements a Publish-Subscribe architecture for real-time traffic u
 - Publisher: Publishes traffic events and updates to the broker.
 - Subscriber: Subscribes to specific cities and receives real-time traffic updates.
 - Flask Web App: Provides a user-friendly interface for subscribers to manage their subscriptions.
-- API consumed to fetch realtime data for Bay Area Cities: 
-
+- API consumed to fetch realtime data for Bay Area Cities: https://511.org/open-data/traffic 
+ Reference: https://511.org/media/621/show
 
 
 
