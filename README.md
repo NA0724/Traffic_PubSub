@@ -8,6 +8,8 @@
  - Install Docker for desktop. (We have used Docker [Docker version 20.10.24, build 297e128] for Mac.)
  - Install Docker extension in Visual Studio Code Editor
  - The project structure looks like this:
+
+```
 Traffic_pubsub/
 │
 ├── broker/
@@ -46,6 +48,7 @@ Traffic_pubsub/
 └── README.md
 └── docker-compose.yml
 └── docker-compose.debug.yml
+```
 
 - Once the environment setup is done, create the images from the Dockerfiles for subscriber, publisher and broker. Open the terminal and run the following commands. 
 
