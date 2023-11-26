@@ -51,8 +51,8 @@ def subscriber(subscriber_name, topics, broker_addresses):
         last_heartbeat_time = time.time()
         while True:
             message = subscriber_socket.recv(1024).decode()
-            logger.info(f"\033[91m Message received from broker: {message}\033[0m")
             if message:
+                logger.info(f"\033[91m Message received from broker: {message}\033[0m")
                 parts = message.split('*')
                 if parts[0] == "HEARTBEAT":
                     last_heartbeat_time = time.time()
@@ -68,7 +68,7 @@ def subscriber(subscriber_name, topics, broker_addresses):
                     received_timestamp = int(parts[1])
                     lamport_timestamp = max(lamport_timestamp, received_timestamp) + 1
                 # Check if it's time to send data to Flask
-                if not sent and time.time() - last_send_time > send_interval:
+                if not sent and time.time() - last_send_time > send_interval and event_sub_data:
                     send_data_to_flask(event_sub_data)
                     sent = True
                     event_sub_data.clear()  # Clear the data after sending
