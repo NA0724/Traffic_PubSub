@@ -5,3 +5,5 @@ COPY broker.py /Traffic_PubSub/broker/
 EXPOSE 8888
 # Command to run the broker script
 CMD ["python", "./broker.py"]
+
+

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        body {
+            text-align: center;
+            background-image: url('{{ url_for('static', filename='images/traffic1.jpg') }}');
+            background-size: cover;
+            color: white;  /* Set text color to black */
+        }
+
+        .container {
+            padding-top: 20px;
+            padding-bottom: 20px;
+            background-color: #f2f2f2;
+        }
+
+        .table-container {
+            display: none;
+            margin: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: auto;
+        }
+
+        th, td {
+            border: 1px solid rgb(241, 210, 9);
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+        .success-container {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+        <!-- Header -->
+        <nav class="navbar navbar-dark bg-dark">
+            <a class="navbar-brand mb-0 h1" href="/">BayAreaTraffic</a>
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Home</a>
+                </li>
+            </ul>
+        </nav>
+        
+    <div class="container">
+        <div class="success-container">
+            <h1>Success!</h1>
+            <h3>Subscriber:{{ subscriber_name }} has successfully subscribed to traffic updates for {{ topics|join(',') }}.</h3>
+        </div>
+        <div class="view-events">
+            <!-- Form for submitting hidden fields -->
+            <form id="hiddenFieldsForm" action="{{ url_for('publish_data', subscriber_name=subscriber_name) }}" method="POST" style="display: inline;">
+                <input type="hidden" name="subscriber_name" value="{{ subscriber_name }}">
+                <input type="hidden" name="selected_topics" value="{{ topics|join(',') }}">
+                <button type="submit" class="btn btn-info" >Click to get latest traffic updates</button>
+            </form>
+        </div>
+    </div>
+    
+</body>
+</html>

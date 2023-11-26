@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Events Updates</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        body {
+            text-align: center;
+            background-image: url('{{ url_for('static', filename='images/traffic1.jpg') }}');
+            background-size: cover;
+            color: black; /* Set text color to black */
+        }
+
+        .container {
+            padding-top: 20px;
+            padding-bottom: 20px;
+            background-color: #f2f2f2;
+        }
+
+        .table-container {
+            margin: 50px;
+            background-color: white; /* Set table background color to white */
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: auto;
+        }
+
+        th, td {
+            border: 1px solid rgb(241, 210, 9);
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+        .error-message {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+        <!-- Header -->
+        <nav class="navbar navbar-dark bg-dark">
+            <a class="navbar-brand mb-0 h1" href="/">BayAreaTraffic</a>
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Home</a>
+                </li>
+            </ul>
+        </nav>
+        
+    <div class="container">
+        <header class="bg-secondary text-white p-3">
+            <h1>Displaying Traffic Updates for Subscriber: {{ subscriber_name }}</h1>
+        </header>
+        <div class="table-container">
+            {% if event %}
+                <table>
+                    <tr>
+                        <th>Area</th>
+                        <th>Event Type</th>
+                        <th>Headline</th>
+                        <th>Updated</th>
+                    </tr>
+                        {% for event_data in event %}
+                        {% set event_dict = event_data | json_parse %}
+                            <tr>
+                                <td>{{ event_dict['area'] }}</td>
+                                <td>{{ event_dict['event_type'] }}</td>
+                                <td>{{ event_dict['headline'] }}</td>
+                                <td>{{ event_dict['updated'] }}</td>
+                            </tr>
+                        {% endfor %}
+                </table>
+            {% else %}
+                <p class="error-message">No events available for the areas selected. Choose another city or try again.</p>
+            {% endif %}
+            
+        </div>
+</div>
+</body>
+</html>

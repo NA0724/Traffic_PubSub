@@ -3,6 +3,7 @@ import json
 import sys
 import time
 import logging
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -11,9 +12,10 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
-
+event_sub_data={}
 lamport_timestamp = 0
 heartbeat_timeout = 6
+
 def subscriber(subscriber_name, topics, broker_addresses):
     leader_address = None
     for broker_address in broker_addresses:
@@ -23,7 +25,7 @@ def subscriber(subscriber_name, topics, broker_addresses):
             leader_address = get_leader_address(broker_address)
             if leader_address:
                 subscriber_socket.connect(leader_address)
-                logger.info(f"Connected to broker: {leader_address}")
+                logger.info(f"{subscriber_socket.getsockname()} Connected to broker: {leader_address}")
                 break
             else:
                 logger.error(f"Failed to get leader address from broker: {broker_address}")
@@ -34,7 +36,10 @@ def subscriber(subscriber_name, topics, broker_addresses):
     if not leader_address:
         logger.error("Failed to connect to any broker. Exiting.")
         return
-    
+
+    last_send_time = time.time()
+    send_interval = 5
+    sent = False
     # Subscribe to each topic
     try:
         for topic in topics:
@@ -56,19 +61,18 @@ def subscriber(subscriber_name, topics, broker_addresses):
                     lamport_timestamp = max(lamport_timestamp, received_timestamp) + 1
                 else:
                     received_data = parts[0]
+                    ip_address = subscriber_socket.getsockname()[0]
+                    if ip_address not in event_sub_data:
+                        event_sub_data[ip_address] = []
+                    event_sub_data[ip_address].append(received_data)
                     received_timestamp = int(parts[1])
                     lamport_timestamp = max(lamport_timestamp, received_timestamp) + 1
-                    event_data = json.loads(received_data)
-                    if event_data["area"] in topics:
-                        print(f"Subscriber {subscriber_name} received traffic event:")
-                        print(f"Event ID: {event_data['event_id']}")
-                        print(f"Area: \033[91m{event_data['area']}\033[0m")
-                        print(f"Event Type: {event_data['event_type']}")
-                        print(f"Headline: {event_data['headline']}")
-                        print(f"Updated: {event_data['updated']}")
-                        print(f"\033[32mLamport timestamp: {lamport_timestamp}\033[0m")
-                        print()
-                
+                # Check if it's time to send data to Flask
+                if not sent and time.time() - last_send_time > send_interval:
+                    send_data_to_flask(event_sub_data)
+                    sent = True
+                    event_sub_data.clear()  # Clear the data after sending
+                    last_send_time = time.time()
             # Check for heartbeat timeout
             if time.time() - last_heartbeat_time > heartbeat_timeout:
                 logger.error("Heartbeat missed. Reconnecting...")
@@ -84,8 +88,19 @@ def subscriber(subscriber_name, topics, broker_addresses):
         logger.error(f"Subscriber {subscriber_name} is shutting down.")
     finally:
         subscriber_socket.close()
+         
 
+def send_data_to_flask(data):
+    flask_url = 'http://flask:5002/subscriber_data'  # Replace with your Flask app's URL and endpoint
+    try:    
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(flask_url, json=data, headers=headers)
+        response.raise_for_status()
+        logger.info(f"\033[92m Successfully send data to flask \033[0m")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error sending data to Flask: {e}")
 
+# Get elected broker and connect the subscriber to the leader
 def get_leader_address(broker_address):
     try:
         global lamport_timestamp

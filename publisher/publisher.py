@@ -69,6 +69,7 @@ def publisher(broker_addresses):
         logger.exception(f"An error occurred: {e}")
 
 
+# Get elected broker and connect the publisher to the leader
 def get_leader_address(broker_address):
     try:
         global lamport_timestamp

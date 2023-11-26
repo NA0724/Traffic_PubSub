@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        body {
+            text-align: center;
+            background-image: url('{{ url_for('static', filename='images/traffic1.jpg') }}');
+            background-size: cover;
+            color: white; /* Set text color to black */
+        }
+
+        .container {
+            padding-top: 20px;
+            padding-bottom: 20px;
+            background-color: #f2f2f2;
+        }
+
+        h2 {
+            color: red; /* Making the h1 text red */
+            font-size: 3em; /* Increasing the size of the h1 element */
+        }
+
+        p {
+            font-size: 1.5em; /* Slightly larger paragraphs but smaller than h1 */
+        }
+        .error-container {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+        <!-- Header -->
+        <nav class="navbar navbar-dark bg-dark">
+            <a class="navbar-brand mb-0 h1" href="/">BayAreaTraffic</a>
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">Home</a>
+                </li>
+            </ul>
+        </nav>
+    <div class="container">
+        <div class = "error-container">
+            <h2>Error!</h2>
+            <p>Reason: {{ reason }} </p>
+            <p>Please try again.</p>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
