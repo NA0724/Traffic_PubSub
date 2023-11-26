@@ -66,7 +66,7 @@ Traffic_pubsub/
 `docker build -t broker_image broker`
 `docker build -t subscriber_image subscriber`
 `docker build -t publisher_image publisher`
-`docker build -t trafficpubsub_image flask`
+`docker build -t flask flask`
 
 #### Create network for containers
 `docker network create --driver bridge traffic_network`
@@ -80,7 +80,7 @@ Traffic_pubsub/
 - Now Run the container to start the application.
 
 #### Run Flask container
-`docker run -v /var/run/docker.sock:/var/run/docker.sock -d --name trafficpubsub --network traffic_network -p 5002:5002 trafficpubsub_image python3 ./app.py`
+`docker run -v /var/run/docker.sock:/var/run/docker.sock -d --name flask --network traffic_network -p 5002:5002 flask python3 ./app.py`
 
 - All the screenshots are in the Screenshots folder.
 

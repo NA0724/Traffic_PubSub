@@ -91,9 +91,14 @@ def subscriber_data():
 def process_data(data):
     global events
     values = list(data.values())
-    events = values[0]
-    logger.info(f"\033[34m Current Subscriber IP address: {list(data.keys())} \033[0m")
-    logger.info(f" \033[34m Events: {events} \033[0m")
+    if values:
+        events = values[0]
+        logger.info(f"\033[34m Current Subscriber IP address: {list(data.keys())} \033[0m")
+        logger.info(f" \033[34m Events: {events} \033[0m")
+    else:
+        # Handle the case when 'values' is empty
+        logger.error("The 'values' list is empty.")
+    
         
 # Custom Jinja2 filter for parsing JSON
 @app.template_filter('json_parse')
