@@ -71,7 +71,7 @@ def subscriber(subscriber_name, topics, broker_addresses):
                 if not sent and time.time() - last_send_time > send_interval and event_sub_data:
                     send_data_to_flask(event_sub_data)
                     sent = True
-                    event_sub_data.clear()  # Clear the data after sending
+                    #event_sub_data.clear()  # Clear the data after sending
                     last_send_time = time.time()
             # Check for heartbeat timeout
             if time.time() - last_heartbeat_time > heartbeat_timeout:
