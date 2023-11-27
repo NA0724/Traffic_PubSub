@@ -17,7 +17,9 @@ app = Flask(__name__)
 topics = ["Alameda", "Contra Costa", "Marin", "San Francisco", "San Mateo", "San Benito", "Santa Clara", "Napa",
           "Solano", "Sonoma", "Merced", "Santa Cruz", "San Joaquin", "Stanislaus"]
 client = docker.from_env()
-events = []
+
+all_data = {}
+current_subscriber = {}
 
 # Render the home page
 @app.route('/')
@@ -28,7 +30,7 @@ def homepage():
 # Subscriber method gets the subscriber name and topics selected from frontend and runs the subscriber container with those details
 @app.route('/subscribe', methods=['POST'])
 def subscribe():
-    global events, reason
+    global current_subscriber
     #global current_subscriber 
     selected_topics = request.form.getlist('topics')
     subscriber_name = request.form.get('name')
@@ -41,6 +43,16 @@ def subscribe():
                         name="subscriber_{}".format(container_name),
                         network="traffic_network",
                         detach=True)
+       
+        # Use the container ID to get the container instance
+        container_instance = client.containers.get(subscriber_container.id)
+        # Get the bridge network information
+        bridge_network_info = container_instance.attrs['NetworkSettings']['Networks']['traffic_network']
+        # Extract the IP address
+        ip = bridge_network_info['IPAddress']
+        if subscriber_name not in current_subscriber:
+            current_subscriber[subscriber_name]=''
+        current_subscriber[subscriber_name]=ip
         
         publisher_container = client.containers.run("publisher_image", 
                                       command="python3 ./publisher.py broker1:8888 broker2:8889 broker3:8890 " ,
@@ -67,15 +79,25 @@ def subscribe():
 
 @app.route('/publish-data/<subscriber_name>', methods=['POST'])
 def publish_data(subscriber_name):
-    global events
+    global all_data, current_subscriber
     time.sleep(5)
     try:
-        return render_template('subscriber_data.html', subscriber_name=subscriber_name, event=events)
+        current_ip = current_subscriber[subscriber_name]
+        if current_ip in all_data:
+            key = current_ip
+            values = all_data[key]
+            if values:
+                logger.info(f"\033[34m Current Subscriber IP address: {key} \033[0m")
+                logger.info(f" \033[34m Events: {values} \033[0m")
+                return render_template('subscriber_data.html', subscriber_name=subscriber_name, event=values)
+            else:
+                logger.error("The 'values' list is empty.")
+        else:
+            logger.error(f"No events found for subscriber : {{ current_subscriber }}")
+        return render_template('error.html', reason = "Error in displaying events for subscriber!")
     except Exception as e:
         logger.error(f"Error displaying data: {e}")
         return render_template('error.html', reason = "Error in displaying events for subscriber!")
-    finally:
-        events.clear()
 
 @app.route('/subscriber_data', methods=['POST'])
 def subscriber_data():
@@ -89,15 +111,9 @@ def subscriber_data():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 def process_data(data):
-    global events
-    values = list(data.values())
-    if values:
-        events = values[0]
-        logger.info(f"\033[34m Current Subscriber IP address: {list(data.keys())} \033[0m")
-        logger.info(f" \033[34m Events: {events} \033[0m")
-    else:
-        # Handle the case when 'values' is empty
-        logger.error("The 'values' list is empty.")
+    global all_data
+    all_data.update(data)
+    logger.info(f"All data received: {all_data}")
     
         
 # Custom Jinja2 filter for parsing JSON

@@ -16,8 +16,6 @@ RUN pip install docker
 # Make port 5000 available to the world outside this container
 EXPOSE 5002
 
-# Define environment variable
-#ENV NAME World
 
 # Run app.py when the container launches
 CMD ["python", "app.py"]
