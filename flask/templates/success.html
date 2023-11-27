@@ -17,6 +17,8 @@
             padding-top: 20px;
             padding-bottom: 20px;
             background-color: #f2f2f2;
+            margin: 100px;
+            display: inline-table;
         }
 
         .table-container {
@@ -43,6 +45,11 @@
         .success-container {
             color: green;
         }
+        .success-message {
+            font-size: 1.2em;
+            max-width: 600px;
+            margin: 20px auto;
+        }
     </style>
 </head>
 <body>
@@ -59,14 +66,16 @@
     <div class="container">
         <div class="success-container">
             <h1>Success!</h1>
-            <h3>Subscriber:{{ subscriber_name }} has successfully subscribed to traffic updates for {{ topics|join(',') }}.</h3>
+            <div class="success-message">
+                <h3>Subscriber:{{ subscriber_name }} has successfully subscribed to traffic updates for {{ topics|join(',') }}.</h3>
+            </div>
         </div>
         <div class="view-events">
             <!-- Form for submitting hidden fields -->
             <form id="hiddenFieldsForm" action="{{ url_for('publish_data', subscriber_name=subscriber_name) }}" method="POST" style="display: inline;">
                 <input type="hidden" name="subscriber_name" value="{{ subscriber_name }}">
                 <input type="hidden" name="selected_topics" value="{{ topics|join(',') }}">
-                <button type="submit" class="btn btn-info" >Click to get latest traffic updates</button>
+                <button type="submit" class="btn btn-dark" >Click to get latest traffic updates</button>
             </form>
         </div>
     </div>
