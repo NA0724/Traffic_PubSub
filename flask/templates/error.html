@@ -17,6 +17,8 @@
             padding-top: 20px;
             padding-bottom: 20px;
             background-color: #f2f2f2;
+            margin: 100px;
+            display: inline-table;
         }
 
         h2 {
@@ -29,6 +31,11 @@
         }
         .error-container {
             color: red;
+        }
+        .error-message {
+            font-size: 1.2em;
+            max-width: 600px;
+            margin: 20px auto;
         }
     </style>
 </head>
@@ -45,8 +52,9 @@
     <div class="container">
         <div class = "error-container">
             <h2>Error!</h2>
-            <p>Reason: {{ reason }} </p>
-            <p>Please try again.</p>
+            <div class="error-message">
+                <h3>{{ reason }}. Please try again.</h3>
+            </div>
         </div>
     </div>
 </div>

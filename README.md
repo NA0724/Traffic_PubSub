@@ -59,7 +59,7 @@ Traffic_pubsub/
 └── docker-compose.debug.yml
 ```
 
-#### Steps to confirgure and run the application
+#### Steps to configure and run the application
 - Once the environment setup is done, create the images from the Dockerfiles for subscriber, publisher and broker. Open the terminal and run the following commands. 
 
 #### Build Docker Image for Broker, Subscriber and Publisher from respective dockerfiles
@@ -85,7 +85,7 @@ Traffic_pubsub/
 - All the screenshots are in the Screenshots folder.
 
 
-## Steps to manually run subscriber and publsiher. 
+## Steps to manually run subscriber and publisher. 
 (Not needed if flask is running.)
 #### Run subscriber container
 `docker run -d --name subscriber1 --network traffic_network subscriber_image python3 ./subscriber.py "sub1" "broker1:8888" "broker2:8889" "broker3:8890" "Santa Clara"`

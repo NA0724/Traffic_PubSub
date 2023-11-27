@@ -37,7 +37,7 @@ def subscribe():
     logger.info(f"Sending data to subscribers: {subscriber_name},  topics={t}")
     try:
         subscriber_container = client.containers.run("subscriber_image",
-                        command="python3 ./subscriber.py broker1:8888 broker2:8889 broker3:8890 {}".format(' '.join(map(lambda x: '"{}"'.format(x), selected_topics))),
+                        command="python3 ./subscriber.py broker3:8890 broker2:8889 broker1:8888 {}".format(' '.join(map(lambda x: '"{}"'.format(x), selected_topics))),
                         name="subscriber_{}".format(container_name),
                         network="traffic_network",
                         detach=True)
